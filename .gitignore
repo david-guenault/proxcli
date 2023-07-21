@@ -1,0 +1,4 @@
+build/*
+dist/*
+proxcli.egg-info/*
+venv/*
