@@ -1,5 +1,5 @@
 
-setup: venv
+setup: clean venv
 	venv/bin/python3 setup.py install
 	
 venv:
