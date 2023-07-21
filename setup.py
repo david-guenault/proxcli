@@ -1,9 +1,9 @@
 import setuptools
 from setuptools import setup
 setup(
-    name='proxmox',
+    name='proxcli',
     version='1.0',
-    py_modules=['proxmox', 'proxmoxlib'],
+    py_modules=['proxcli', 'proxmoxlib'],
     install_requires=[
         'proxmoxer',
         'beautifultable',
@@ -16,6 +16,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        proxmox=proxmox:app
+        proxcli=proxcli:app
     ''',
 )
