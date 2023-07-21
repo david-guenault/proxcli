@@ -225,16 +225,28 @@ class proxmox:
                             updated_vms.append(vm)
         return self.output(headers=self.headers_qemu, data=updated_vms, format=format)            
 
-    def migrate_vms(self, target_node, filter=None):
-        vms = self.get_vms(format="internal")
-        for vm in vms:
-            if self.ismatching(filter, vm["name"]):
-                # this vm match filter 
-                # first get current node
-                source_node = vm["node"]
-                # now try to migrate 
-                self.proxmox_instance.nodes(source_node).qemu(vm["vmid"]).migrate.post(**{'node':source_node,'target':target_node,'vmid':vm["vmid"]})
-                rprint("Migration vm %s from %s to %s " % (vm["name"], source_node, target_node))
+    def migrate_vms(self, target_node, filter=None, vmid=None):
+        if filter and vmid:
+            raise Exception("filter and vmid arguments are mutualy exclusive")
+        vms = self.get_vms(format="internal")                
+        if vmid:
+            vms = [v for v in vms if int(v["vmid"]) == int(vmid)]
+            if len(vms) != 1:
+                raise Exception("vm %s could not be found on any node")
+            else:
+                vm = vms[0]
+            self.proxmox_instance.nodes(vm["node"]).qemu(vmid).migrate.post(**{'node':vm["node"],'target':target_node,'vmid':vmid})
+            rprint("Migration vm %s from %s to %s " % (vm["name"], vm["node"], target_node))
+        else:
+            
+            for vm in vms:
+                if self.ismatching(filter, vm["name"]):
+                    # this vm match filter 
+                    # first get current node
+                    source_node = vm["node"]
+                    # now try to migrate 
+                    self.proxmox_instance.nodes(source_node).qemu(vm["vmid"]).migrate.post(**{'node':source_node,'target':target_node,'vmid':vm["vmid"]})
+                    rprint("Migration vm %s from %s to %s " % (vm["name"], source_node, target_node))
 
     def set_tags(self, tags="", filter=None):
         vms = self.get_vms(format="json", filter=filter)
@@ -332,6 +344,7 @@ class proxmox:
             if len(vm) == 1:
                 node = vm[0]["node"]
                 results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
+            
 
     def status_containers(self,status=None, filter=None):
         """set status of containers matching filter"""

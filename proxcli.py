@@ -81,9 +81,11 @@ def storage_list():
 ### VMS ###
 
 @vms.command("migrate")
-def vms_migrate(target_node: Annotated[str, typer.Option()], vmid: Annotated[str, typer.Option()] = None, filter: Annotated[str, typer.Option()] = "^.*"):
+def vms_migrate(target_node: Annotated[str, typer.Option()], vmid: Annotated[str, typer.Option()] = None, filter: Annotated[str, typer.Option()] = None):
     # migrate vms matching filter to a specified target_node
-    p.migrate_vms(filter=filter, target_node=target_node)
+    if not vmid:
+        filter = "^.*$"
+    p.migrate_vms(filter=filter, target_node=target_node, vmid=vmid)
 
 @vms.command("list")
 def vms_list(filter: str = "^.*", out: str = "table", nodes: str = None, status: str = "stopped,running"):
