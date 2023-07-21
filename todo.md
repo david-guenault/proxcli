@@ -1,0 +1,4 @@
+- récupérer les ips de qemu agent
+- possibilité d'agrandir le disque
+- lister le contenu stockage (disques, Snapshots...)
+- Lister les machines nécessitant un reboot (après modif hardware)

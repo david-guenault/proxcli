@@ -1,0 +1,11 @@
+# this file must be present in your home directory and named .proxmox
+hosts=pve1,pve2
+user=user@pam
+password=secretpassword
+[headers]
+nodes=node,status
+qemu=vmid,name,status,pid,node,cpu,mem,template,tags
+lxc=
+[data]
+colorize=online:green,offline:red,running:green,stopped:red
+style=STYLE_BOX
