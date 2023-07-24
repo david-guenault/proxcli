@@ -11,6 +11,8 @@ from termcolor import colored
 import requests
 from rich import print as rprint
 urllib3.disable_warnings()
+from proxmoxer.tools import Tasks
+from datetime import datetime
 
 class proxmox:
     def __init__(self):
@@ -29,6 +31,7 @@ class proxmox:
             self.headers_qemu = config["headers"]["qemu"].split(",")
             self.headers_lxc = config["headers"]["lxc"].split(",")
             self.headers_storage = config["headers"]["storage"].split(",")
+            self.headers_tasks = config["headers"]["tasks"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.table_colorize = dict([ v.split(':') for v in config["data"]["colorize"].split(",") ])
             return True
@@ -109,6 +112,10 @@ class proxmox:
             else:
                 print(data)
 
+    # readable date
+    def readable_date(self, timestamp):
+        return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')        
+
     def table(self, headers, data, width=180):
         """
         Display data as table
@@ -125,12 +132,17 @@ class proxmox:
                     datarow.append("")
             new_data_row = []
             for cell in datarow:
-                if cell in self.table_colorize.keys():
-                    new_data_row.append(colored(cell,self.table_colorize[cell]))
+                if len(str(cell)) > 0:
+                    words = list(self.table_colorize.keys())
+                    match = [word for word in words if word in str(cell)]
+                    if len(match) == 1:
+                        new_data_row.append(colored(cell, self.table_colorize[match[0]]))
+                    else:
+                        new_data_row.append(cell)
                 else:
-                    new_data_row.append(cell)
+                    new_data_row.append("")
             table.rows.append(tuple(new_data_row))
-        return table        
+        return table
 
     def ismatching(self, regex, data):
         if not re.match(regex, data):
@@ -235,7 +247,10 @@ class proxmox:
                 raise Exception("vm %s could not be found on any node")
             else:
                 vm = vms[0]
-            self.proxmox_instance.nodes(vm["node"]).qemu(vmid).migrate.post(**{'node':vm["node"],'target':target_node,'vmid':vmid})
+            try:
+                self.proxmox_instance.nodes(vm["node"]).qemu(vmid).migrate.post(**{'node':vm["node"],'target':target_node,'vmid':vmid})
+            except Exception as e:
+                print(e)
             rprint("Migration vm %s from %s to %s " % (vm["name"], vm["node"], target_node))
         else:
             
@@ -414,3 +429,29 @@ class proxmox:
             print("Config does not exist yet.")
             print("Generate config with the following command")
             print("proxmox config create --hosts host1,host2,...,hostn --user user --password password")
+    
+    def get_tasks(self, format="internal", errors=0,limit=50,source="all",vmid=None,nodes=None):
+        available_nodes = self.get_nodes(format="internal")
+        available_nodes = [n["node"] for n in available_nodes if n["status"] == "online"]
+        if not nodes:
+            nodes = available_nodes
+        else:
+            nodes = nodes.split(",")
+            nodes = [n for n in nodes if n in available_nodes]
+
+        tasks = []
+        for node in nodes:
+            t = self.proxmox_instance.nodes(node).tasks.get(**{
+                "errors": errors,
+                "limit": limit,
+                "source": source,
+                "vmid": None
+            })
+            tasks += t
+        tasks = [t for t in tasks if t["node"] in nodes]
+        tasks = sorted(tasks, key=lambda d: d['starttime'],reverse=True)
+        for t in tasks:
+            t['starttime'] = self.readable_date(t['starttime'])
+            t['endtime'] = self.readable_date(t['endtime'])
+        self.output(headers=self.headers_tasks, data=tasks, format=format)
+        

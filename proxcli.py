@@ -10,6 +10,7 @@ nodes = typer.Typer(no_args_is_help=True)
 storages = typer.Typer(no_args_is_help=True)
 config = typer.Typer(no_args_is_help=True)
 networks = typer.Typer(no_args_is_help=True)
+tasks = typer.Typer(no_args_is_help=True,pretty_exceptions_enable=False,pretty_exceptions_short=False)
 
 vms_status = typer.Typer(no_args_is_help=True)
 
@@ -24,6 +25,7 @@ app.add_typer(nodes, name="nodes", help="Nodes related functions")
 app.add_typer(inventory, name="inventory", help="Ansible inventory related functions")
 app.add_typer(storages, name="storages")
 app.add_typer(config, name="config")
+app.add_typer(tasks, name="tasks")
 
 nodes.add_typer(networks, name="networks")
 vms.add_typer(tags, name="tags", help="vms and containers tags related functions")
@@ -143,6 +145,11 @@ def nodes_list(filter: str = "^.*", out: str = "table"):
 def networks_list(nodes: Annotated[str, typer.Option()], types: Annotated[str, typer.Option()] = "bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format: Annotated[str,typer.Option()] = "table"):
     # list all network for a subset of nodes
     p.get_networks(format=format, nodes=nodes, types=types)
+
+@nodes.command("tasks")
+def tasks_show(nodes: Annotated[str, typer.Option()] = None):
+    p.get_tasks(format="table",nodes=nodes)
+
 
 ### INVENTORY ###
 
