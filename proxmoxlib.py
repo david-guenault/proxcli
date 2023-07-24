@@ -392,9 +392,10 @@ class proxmox:
         qemu=vmid,name,status,pid,node,cpu,mem,template,ip,tags
         lxc=vmid,name,status,pid,node,cpu,mem,ip,tags
         storage=storage,node,content,type,active,enabled,shared,used_fraction
+        tasks=starttime,endtime,node,user,type,id,status
         [data]
-        colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow
-        style=STYLE_BOX        
+        colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow,failed:red,error:red,OK:green,problems:red
+        style=STYLE_BOX
         ''' % (hosts, user,password)
         config_file = "%s/.proxmox" % os.environ.get("HOME")
         if not os.path.exists(config_file):
