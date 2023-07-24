@@ -2,3 +2,4 @@ build/*
 dist/*
 proxcli.egg-info/*
 venv/*
+__pycache__/*
