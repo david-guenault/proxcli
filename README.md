@@ -54,19 +54,24 @@ proxmox
         show
     containers
     inventory
-        save --format
-        show --format
+        save --out --path
+        show --out
     nodes
         list --filter --out
-        networks
+        networks --nodes --types --out
+        tasks --nodes 
     storages
-    vms
         list
-        migrate
+    vms
+        list --filter --out --nodes --status
+        migrate --target-node  [ --vmid | --filter ]
         nextId
-        reset
-        start
-        stop
-        suspend
+        reset 
+        start [--filter | --vmid ]
+        stop [--filter | --vmid ]
+        suspend [--filter | --vmid ]
+        reset [--filter | --vmid ]
         tags
+            set --tags --filter
+            list 
 ```
