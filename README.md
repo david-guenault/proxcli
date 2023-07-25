@@ -59,6 +59,8 @@ proxmox
         list --filter --out
         networks --nodes --types --out
         tasks --nodes 
+        storages
+            list --out --nodes [Not implemented yet]
     storages
         list
     vms
