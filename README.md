@@ -1,6 +1,8 @@
 # Introduction
 
-proxcli aim to be a unique client for proxmox running over proxmox api. It is not as complete as proxmox tooling but have the hability to work at cluster level from a remote desktop. Feel free to contribute with suggestion, documentation or code. 
+proxcli aim to be a unique client for proxmox running over proxmox api. It is not as complete as proxmox tooling but have the hability to work at cluster level from a remote computer. It will never implement all proxmox feature, it is a sysop tool used for daily tasks. 
+
+Feel free to contribute with suggestion, documentation or code. 
 
 David GUENAULT (david dot guenault at gmail dot com)
 
@@ -18,6 +20,12 @@ just issue the command **make** within this repository. It will install all the 
 
 ```bash
 make
+```
+
+You can also install it with the classical command
+
+``` bash
+python setup.py install
 ```
 
 # configuration
@@ -61,8 +69,10 @@ proxmox
         tasks --nodes 
         storages
             list --out --nodes [Not implemented yet]
-    storages
-        list
+    cluster
+        storages
+            list
+        log [not implemented yet]
     vms
         list --filter --out --nodes --status
         migrate --target-node  [ --vmid | --filter ]
@@ -72,6 +82,8 @@ proxmox
         stop [--filter | --vmid ]
         suspend [--filter | --vmid ]
         reset [--filter | --vmid ]
+        delete [--filter | --vmid ]
+        clone --vmid --source-node --target-node --description --full --name --storage --pool  [not implemented yet]
         tags
             set --tags --filter
             list 
