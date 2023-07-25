@@ -11,7 +11,7 @@ storages = typer.Typer(no_args_is_help=True)
 config = typer.Typer(no_args_is_help=True)
 networks = typer.Typer(no_args_is_help=True)
 tasks = typer.Typer(no_args_is_help=True,pretty_exceptions_enable=False,pretty_exceptions_short=False)
-
+cluster = typer.Typer(no_args_is_help=True)
 vms_status = typer.Typer(no_args_is_help=True)
 
 containers_status = typer.Typer(no_args_is_help=True)
@@ -23,12 +23,13 @@ app.add_typer(vms, name="vms")
 app.add_typer(containers, name="containers", help="Containers related functions")
 app.add_typer(nodes, name="nodes", help="Nodes related functions")
 app.add_typer(inventory, name="inventory", help="Ansible inventory related functions")
-app.add_typer(storages, name="storages")
 app.add_typer(config, name="config")
 app.add_typer(tasks, name="tasks")
+app.add_typer(cluster, name="cluster")
 
 nodes.add_typer(networks, name="networks")
 vms.add_typer(tags, name="tags", help="vms and containers tags related functions")
+cluster.add_typer(storages, name="storages", help="cluster storage commands")
 p = proxmox()
 
 ### CONFIG ####
@@ -43,7 +44,12 @@ def config_create(hosts: Annotated[str, typer.Option()], user: Annotated[str, ty
     # generate config
     p.create_config(hosts, user, password)
 
-### STORAGE ###
+### CLUSTER ###
+
+@cluster.command("log")
+def cluster_log():
+    # show cluster log
+    p.get_cluster_log()
 
 @storages.command("list")
 def storage_list():
@@ -118,6 +124,23 @@ def vms_status(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[in
 def vms_status(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None):
     # reset vms based on a regexp filter on name or by vmid    
     vms_status_apply(filter, vmid, "reset")
+
+@vms.command("delete")
+def vms_delete(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None):
+    # delete vms matching regex filter applied on vm name or by vmid.
+    # vmid and filter are mutualy exclusive
+    if not vmid and not filter:
+        raise Exception("You must specify one of vmid or filter options")
+    if vmid and filter:
+        raise Exception("vmid and filter options are mutualy exclusive")
+    if vmid: 
+        confirm = typer.confirm("Do you realy want to delete vm %s" % vmid)
+    if filter:
+        confirm = typer.confirm("Do you realy want to delete vms matching filter %s" % filter)
+    if not confirm:
+        raise typer.Abort()
+    else:
+        p.delete_vms(filter=filter, vmid=vmid)
 
 def vms_status_apply(filter, vmid, status):
     if vmid and filter:
