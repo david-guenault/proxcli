@@ -52,7 +52,6 @@ proxmox
     config
         create --hosts --user --password
         show
-    containers
     inventory
         save --out --path
         show --out
