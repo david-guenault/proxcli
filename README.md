@@ -57,7 +57,7 @@ proxmox
         show --out
     nodes
         list --filter --out
-        networks --nodes --types --out
+        networks --nodes --types --out [not implemented yet]
         tasks --nodes 
         storages
             list --out --nodes [Not implemented yet]
