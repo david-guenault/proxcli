@@ -142,9 +142,9 @@ def nodes_list(filter: str = "^.*", out: str = "table"):
     p.get_nodes(format=out, filter=filter)
 
 @nodes.command("networks")
-def networks_list(nodes: Annotated[str, typer.Option()], types: Annotated[str, typer.Option()] = "bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format: Annotated[str,typer.Option()] = "table"):
+def networks_list(nodes: Annotated[str, typer.Option()], types: Annotated[str, typer.Option()] = "bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", out: Annotated[str,typer.Option()] = "table"):
     # list all network for a subset of nodes
-    p.get_networks(format=format, nodes=nodes, types=types)
+    p.get_networks(format=out, nodes=nodes, types=types)
 
 @nodes.command("tasks")
 def tasks_show(nodes: Annotated[str, typer.Option()] = None):
@@ -154,12 +154,12 @@ def tasks_show(nodes: Annotated[str, typer.Option()] = None):
 ### INVENTORY ###
 
 @inventory.command("save")
-def inventory_save(path: str, format: Annotated[str, typer.Option()] = "yaml"):
-    p.inventory(save=path, format=format)
+def inventory_save(path: str, out: Annotated[str, typer.Option()] = "yaml"):
+    p.inventory(save=path, format=out)
 
 @inventory.command("show")
-def inventory_show(format: Annotated[str, typer.Option()] = "yaml"):
-    p.inventory(format=format)
+def inventory_show(out: Annotated[str, typer.Option()] = "yaml"):
+    p.inventory(format=out)
 
 ### MAIN ###
 
