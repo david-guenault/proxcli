@@ -373,12 +373,17 @@ class proxmox:
     def get_storages(self,format="json"):
         """list storages"""
         nodes = self.get_nodes(format="internal")
+        available_nodes = [n for n in nodes if n["status"] == "online"]
+        if len(available_nodes) > 0:
+            query_node = available_nodes[0]
+        else:
+            raise Exception("No nodes available")
+        
         all_storages = []
-        for node in nodes:
-            storages = self.proxmox_instance.nodes(node["node"]).storage.get()
-            for storage in storages:
-                storage["node"] = node["node"]
-                all_storages.append(storage)
+        
+        storages = self.proxmox_instance.storage.get()
+        for storage in storages:
+            all_storages.append(storage)
         return self.output(headers=self.headers_storage, data=all_storages, format=format)            
         
     def create_config(self, hosts=None, user=None, password=None):
