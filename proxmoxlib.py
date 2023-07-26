@@ -157,6 +157,23 @@ class proxmox:
             verify_ssl=False
         )
 
+    ### CLUSTER ###
+
+    def get_storages(self,format="json"):
+        """list storages"""
+        nodes = self.get_nodes(format="internal")
+        available_nodes = [n for n in nodes if n["status"] == "online"]
+        if len(available_nodes) > 0:
+            query_node = available_nodes[0]
+        else:
+            raise Exception("No nodes available")
+        
+        all_storages = []
+        
+        storages = self.proxmox_instance.storage.get()
+        for storage in storages:
+            all_storages.append(storage)
+        return self.output(headers=self.headers_storage, data=all_storages, format=format)            
 
     ### NODES ###
 
@@ -174,6 +191,46 @@ class proxmox:
         if filter:
             nodes = [n for n in nodes if self.ismatching(filter, n["node"])]
         return self.output(headers=self.headers_nodes, data=nodes, format=format)
+
+    def get_tasks(self, format="internal", errors=0,limit=50,source="all",vmid=None,nodes=None):
+        available_nodes = self.get_nodes(format="internal")
+        available_nodes = [n["node"] for n in available_nodes if n["status"] == "online"]
+        if not nodes:
+            nodes = available_nodes
+        else:
+            nodes = nodes.split(",")
+            nodes = [n for n in nodes if n in available_nodes]
+
+        tasks = []
+        for node in nodes:
+            t = self.proxmox_instance.nodes(node).tasks.get(**{
+                "errors": errors,
+                "limit": limit,
+                "source": source,
+                "vmid": None
+            })
+            tasks += t
+        tasks = [t for t in tasks if t["node"] in nodes]
+        tasks = sorted(tasks, key=lambda d: d['starttime'],reverse=True)
+        for t in tasks:
+            t['starttime'] = self.readable_date(t['starttime'])
+            t['endtime'] = self.readable_date(t['endtime'])
+        self.output(headers=self.headers_tasks, data=tasks, format=format)
+
+    def get_nodes_network(self, nodes=None, type="bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format="internal"):
+        if not nodes or not types: 
+            return []
+        else:
+            nodes = nodes.split(",")
+            types = types.split(",")
+        networks = []
+        for node in nodes:
+            result = self.proxmox_instance.node(node).network.get()
+            for net in result:
+                net["node"] = node
+                networks.append(net)
+        self.output(headears=None, data=networks)
+
 
     ### VMS ###
 
@@ -363,6 +420,16 @@ class proxmox:
         config = self.proxmox_instance.nodes(node).lxc(vmid).config.get()
         return config
 
+    def status_containers(self,status=None, filter=None):
+        """set status of containers matching filter"""
+        containers = self.get_containers(format="internal", filter=filter)
+        if not containers: 
+            return False
+        results = []
+        for container in containers:
+            results.append(self.proxmox_instance.nodes(container["node"]).lxc(container["vmid"]).status.post(status))
+
+
     def get_containers(self, format="internal", filter=None):
         """retrieve a list of containers
         display the list in the specified format or return raw data if format is internal (default)
@@ -463,39 +530,8 @@ class proxmox:
 
         self.output(data = inventory, format=format, save=save)
 
-
-
-
-
-
-
-      
-
-    def status_containers(self,status=None, filter=None):
-        """set status of containers matching filter"""
-        containers = self.get_containers(format="internal", filter=filter)
-        if not containers: 
-            return False
-        results = []
-        for container in containers:
-            results.append(self.proxmox_instance.nodes(container["node"]).lxc(container["vmid"]).status.post(status))
-
-    def get_storages(self,format="json"):
-        """list storages"""
-        nodes = self.get_nodes(format="internal")
-        available_nodes = [n for n in nodes if n["status"] == "online"]
-        if len(available_nodes) > 0:
-            query_node = available_nodes[0]
-        else:
-            raise Exception("No nodes available")
-        
-        all_storages = []
-        
-        storages = self.proxmox_instance.storage.get()
-        for storage in storages:
-            all_storages.append(storage)
-        return self.output(headers=self.headers_storage, data=all_storages, format=format)            
-        
+    ### CONFIG ###
+ 
     def create_config(self, hosts=None, user=None, password=None):
         config = '''
         [credentials]
@@ -520,19 +556,6 @@ class proxmox:
         else:
             print("A configuration already exist at %s" % config_file)
 
-    def get_nodes_network(self, nodes=None, type="bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format="internal"):
-        if not nodes or not types: 
-            return []
-        else:
-            nodes = nodes.split(",")
-            types = types.split(",")
-        networks = []
-        for node in nodes:
-            result = self.proxmox_instance.node(node).network.get()
-            for net in result:
-                net["node"] = node
-                networks.append(net)
-        self.output(headears=None, data=networks)
 
     def dump_config(self):
         config_file = "%s/.proxmox" % os.environ.get("HOME")
@@ -546,28 +569,5 @@ class proxmox:
             print("Generate config with the following command")
             print("proxmox config create --hosts host1,host2,...,hostn --user user --password password")
     
-    def get_tasks(self, format="internal", errors=0,limit=50,source="all",vmid=None,nodes=None):
-        available_nodes = self.get_nodes(format="internal")
-        available_nodes = [n["node"] for n in available_nodes if n["status"] == "online"]
-        if not nodes:
-            nodes = available_nodes
-        else:
-            nodes = nodes.split(",")
-            nodes = [n for n in nodes if n in available_nodes]
 
-        tasks = []
-        for node in nodes:
-            t = self.proxmox_instance.nodes(node).tasks.get(**{
-                "errors": errors,
-                "limit": limit,
-                "source": source,
-                "vmid": None
-            })
-            tasks += t
-        tasks = [t for t in tasks if t["node"] in nodes]
-        tasks = sorted(tasks, key=lambda d: d['starttime'],reverse=True)
-        for t in tasks:
-            t['starttime'] = self.readable_date(t['starttime'])
-            t['endtime'] = self.readable_date(t['endtime'])
-        self.output(headers=self.headers_tasks, data=tasks, format=format)
         
