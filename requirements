@@ -6,7 +6,6 @@ colored==2.2.3
 idna==3.4
 markdown-it-py==3.0.0
 mdurl==0.1.2
-proxcli==1.0
 proxmoxer==2.0.1
 Pygments==2.15.1
 PyYAML==6.0.1
