@@ -83,7 +83,7 @@ proxmox
         suspend [--filter | --vmid ]
         reset [--filter | --vmid ]
         delete [--filter | --vmid ]
-        clone --vmid --source-node --target-node --description --full --name --storage --pool  [not implemented yet]
+        clone --vmid --source-node --target-node --description --full --name --storage --pool  
         tags
             set --tags --filter
             list 

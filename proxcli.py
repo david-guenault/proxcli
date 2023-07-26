@@ -141,7 +141,9 @@ def vms_clone(
 
 
 @vms.command("delete")
-def vms_delete(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None, confirm: Annotated[bool, typer.option("--confirm")] = False):
+def vms_delete(
+    filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None, 
+    confirm: Annotated[bool, typer.Option("--confirm")] = False):
     # delete vms matching regex filter applied on vm name or by vmid.
     # vmid and filter are mutualy exclusive
     if not vmid and not filter:
