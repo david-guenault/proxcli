@@ -16,17 +16,36 @@ Thx to:
 
 # installation
 
-just issue the command **make** within this repository. It will install all the required libraries within a virtualenv
+just issue the command **make** within this repository. It will install all the required libraries within a virtualenv. you just have to activate virtualenvironment to use proxcli
 
 ```bash
 make
+source venv/bin/activate
+proxcli --help
 ```
 
 You can also install it with the classical command
 
 ``` bash
 python setup.py install
+proxcli --help
 ```
+
+Or through pip
+
+```bash
+pip install -r requirements
+python proxcli.py --help
+```
+
+# upgrading
+
+Just pull the new branch ans issue the command from within the repository
+
+``` bash
+python setup.py
+```
+
 
 # configuration
 you can easyli generate a configuration skeleton with the following command:
