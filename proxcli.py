@@ -125,18 +125,34 @@ def vms_status(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[in
     # reset vms based on a regexp filter on name or by vmid    
     vms_status_apply(filter, vmid, "reset")
 
+@vms.command("clone")
+def vms_clone(
+    vmid: Annotated[int, typer.Option()], 
+    name: Annotated[str, typer.Option()], 
+    description: Annotated[str, typer.Option] = "", 
+    full: Annotated[bool, typer.Option("--full")] = False,
+    storage: Annotated[str, typer.Option()] = None,
+    target: Annotated[str, typer.Option()] = None,
+    ):
+    # clone an existing vm
+    print(p.clone_vm(
+        vmid, name, description=description, full=1,storage=storage,target=target
+    ))
+
+
 @vms.command("delete")
-def vms_delete(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None):
+def vms_delete(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None, confirm: Annotated[bool, typer.option("--confirm")] = False):
     # delete vms matching regex filter applied on vm name or by vmid.
     # vmid and filter are mutualy exclusive
     if not vmid and not filter:
         raise Exception("You must specify one of vmid or filter options")
     if vmid and filter:
         raise Exception("vmid and filter options are mutualy exclusive")
-    if vmid: 
-        confirm = typer.confirm("Do you realy want to delete vm %s" % vmid)
-    if filter:
-        confirm = typer.confirm("Do you realy want to delete vms matching filter %s" % filter)
+    if not confirm: 
+        if vmid: 
+            confirm = typer.confirm("Do you realy want to delete vm %s" % vmid)
+        if filter:
+            confirm = typer.confirm("Do you realy want to delete vms matching filter %s" % filter)
     if not confirm:
         raise typer.Abort()
     else:

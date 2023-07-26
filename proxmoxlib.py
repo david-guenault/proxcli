@@ -308,6 +308,47 @@ class proxmox:
                 self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).delete()
         return True
 
+    def status_vms(self,status=None, filter=None, vmid=None):
+        """set status of vms matching filter or vmid"""
+        vms = self.get_vms(format="internal", filter=filter)
+        if not vms: 
+            return False
+        results = []
+        if not vmid:
+            for vm in vms:
+                results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).status.post(status))
+        else:
+            vm = [v for v in vms if v["vmid"] == vmid]
+            if len(vm) == 1:
+                node = vm[0]["node"]
+                results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
+      
+
+    def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None):
+        vms = self.get_vms(format="internal")
+        vm = [v for v in vms if vmid == v["vmid"]]
+        if len(vm) == 0:
+            raise Exception("Unable to find vm %s" % vmid)
+        else:
+            vm = vm[0]
+
+        if vm["status"] != "stopped":
+            raise Exception("VM must be stopped before cloning")
+
+        src_node = vm["node"]
+        dst_node = target
+
+        result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
+            "newid": self.get_next_id(max=500),
+            "node": src_node,
+            "vmid": vmid,
+            "description": description,
+            "full": full,
+            "storage": storage,
+            "target": dst_node
+        })
+        return result
+
 
     ### CONTAINERS (need rework) ###
 
@@ -428,21 +469,7 @@ class proxmox:
 
 
 
-    def status_vms(self,status=None, filter=None, vmid=None):
-        """set status of vms matching filter or vmid"""
-        vms = self.get_vms(format="internal", filter=filter)
-        if not vms: 
-            return False
-        results = []
-        if not vmid:
-            for vm in vms:
-                results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).status.post(status))
-        else:
-            vm = [v for v in vms if v["vmid"] == vmid]
-            if len(vm) == 1:
-                node = vm[0]["node"]
-                results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
-            
+      
 
     def status_containers(self,status=None, filter=None):
         """set status of containers matching filter"""
