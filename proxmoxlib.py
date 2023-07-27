@@ -36,6 +36,8 @@ class proxmox:
             self.headers_storage = config["headers"]["storage"].split(",")
             self.headers_tasks = config["headers"]["tasks"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
+            self.task_polling_interval = config["tasks"]["polling_interval"]
+            self.task_timeout = config["tasks"]["timeout"]
             self.table_colorize = dict([ v.split(':') for v in config["data"]["colorize"].split(",") ])
             return True
         else:
@@ -146,6 +148,17 @@ class proxmox:
             return False
         else:
             return True
+
+    def taskBlock(self, task):
+        '''
+        Poll a task until the task is finished or timed out
+            Paramaters:
+                task (str): a task identifier (UPID:<node_name>:<pid_in_hex>:<pstart_in_hex>:<starttime_in_hex>:<type>:<id (optional)>:<user>@<realm>:)
+            Returns:
+                result (dict); a dict with all the task information (see https://proxmoxer.github.io/docs/2.0/tools/tasks/#blocking_status)
+        '''
+        print("Waiting for task %s to finish" % task)
+        result = Tasks.blocking_status(prox=self.proxmox_instance, task_id=task, timeout=int(self.task_timeout), polling_interval=float(self.task_polling_interval))        
 
     def proxmox(self):
         """create proxmox api instance from the first available node found"""
@@ -341,7 +354,7 @@ class proxmox:
         tags = list(set([item for sublist in tags for item in sublist]))
         print(", ".join(tags))
 
-    def delete_vms(self, filter=None, vmid=None):
+    def delete_vms(self, filter=None, vmid=None, block=True):
         '''
         delete vms matching specified regex applied on vm names
         only stoped vms are removed
@@ -359,11 +372,20 @@ class proxmox:
             vm = [v for v in vms if vmid == v["vmid"]][0]
             if vm["status"] != "stopped":
                 raise Exception("vm %s (%s) must be stopped before deletion" % (vm["name"], vmid))
-            self.proxmox_instance.nodes(vm["node"]).qemu(vmid).delete()            
+            result = self.proxmox_instance.nodes(vm["node"]).qemu(vmid).delete()
+            if block:
+                result = self.taskBlock(result)           
+                self.output(data=result, format="internal")                
         else:
+            results = []
+            if len(vms) == 0:
+                raise Exception("No vms found matching filter %s" % filter)
             for vm in vms:
-                self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).delete()
-        return True
+                results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).delete())
+
+            for result in results:
+                if block:
+                    self.taskBlock(result)
 
     def status_vms(self,status=None, filter=None, vmid=None):
         """set status of vms matching filter or vmid"""
@@ -380,8 +402,7 @@ class proxmox:
                 node = vm[0]["node"]
                 results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
       
-
-    def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None):
+    def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None, block=True, duplicate=None):
         vms = self.get_vms(format="internal")
         vm = [v for v in vms if vmid == v["vmid"]]
         if len(vm) == 0:
@@ -395,17 +416,38 @@ class proxmox:
         src_node = vm["node"]
         dst_node = target
 
-        result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
-            "newid": self.get_next_id(max=500),
-            "node": src_node,
-            "vmid": vmid,
-            "description": description,
-            "full": full,
-            "storage": storage,
-            "target": dst_node
-        })
-        return result
+        if not duplicate:
+            result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
+                "newid": self.get_next_id(max=500),
+                "node": src_node,
+                "vmid": int(vmid),
+                "description": description,
+                "full": full,
+                "storage": storage,
+                "target": dst_node
+            })
+            if block: 
+                result = self.taskBlock(result)
+        else:
+            results = []
+            for index in range(duplicate):
+                instance_name = "%s-%s" % (name, str(index))
+                result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
+                    "newid": self.get_next_id(max=500),
+                    "node": src_node,
+                    "vmid": int(vmid),
+                    "name": instance_name,
+                    "description": description,
+                    "full": full,
+                    "storage": storage,
+                    "target": dst_node
+                })
+                if block:
+                    result = self.taskBlock(result)
+                    results.append()
+                
 
+        return result
 
     ### CONTAINERS (need rework) ###
 
@@ -547,6 +589,10 @@ class proxmox:
         [data]
         colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow,failed:red,error:red,OK:green,problems:red
         style=STYLE_BOX
+        [tasks]
+        polling_interval=1
+        timeout=300
+
         ''' % (hosts, user,password)
         config_file = "%s/.proxmox" % os.environ.get("HOME")
         if not os.path.exists(config_file):

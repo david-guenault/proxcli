@@ -133,17 +133,18 @@ def vms_clone(
     full: Annotated[bool, typer.Option("--full")] = False,
     storage: Annotated[str, typer.Option()] = None,
     target: Annotated[str, typer.Option()] = None,
-    ):
+    block: Annotated[bool, typer.Option("--block")] = False,
+    duplicate: Annotated[str, typer.Option()] = None):
     # clone an existing vm
-    print(p.clone_vm(
-        vmid, name, description=description, full=1,storage=storage,target=target
-    ))
+    p.output(format="internal", data=p.clone_vm(vmid, name, description=description, full=1,storage=storage,target=target, block=block, duplicate=None))
 
 
 @vms.command("delete")
 def vms_delete(
-    filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None, 
-    confirm: Annotated[bool, typer.Option("--confirm")] = False):
+    filter: Annotated[str, typer.Option()] = None, 
+    vmid: Annotated[int, typer.Option()] = None, 
+    confirm: Annotated[bool, typer.Option("--confirm")] = False,
+    block: Annotated[bool, typer.Option("--block")] = False):
     # delete vms matching regex filter applied on vm name or by vmid.
     # vmid and filter are mutualy exclusive
     if not vmid and not filter:
@@ -158,7 +159,7 @@ def vms_delete(
     if not confirm:
         raise typer.Abort()
     else:
-        p.delete_vms(filter=filter, vmid=vmid)
+        p.output(format="internal", data=p.delete_vms(filter=filter, vmid=vmid, block=block))
 
 def vms_status_apply(filter, vmid, status):
     if vmid and filter:
