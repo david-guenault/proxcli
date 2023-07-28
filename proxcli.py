@@ -134,10 +134,10 @@ def vms_clone(
     storage: Annotated[str, typer.Option()] = None,
     target: Annotated[str, typer.Option()] = None,
     block: Annotated[bool, typer.Option("--block")] = False,
-    duplicate: Annotated[str, typer.Option()] = None):
+    duplicate: Annotated[int, typer.Option("--duplicate")] = None):
     # clone an existing vm
-    p.output(format="internal", data=p.clone_vm(vmid, name, description=description, full=1,storage=storage,target=target, block=block, duplicate=None))
-
+    data=p.clone_vm(vmid, name, description=description, full=1, storage=storage, target=target, block=block, duplicate=duplicate)
+    p.output(format="internal", data=data)
 
 @vms.command("delete")
 def vms_delete(

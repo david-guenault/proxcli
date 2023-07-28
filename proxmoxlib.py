@@ -421,6 +421,7 @@ class proxmox:
                 "newid": self.get_next_id(max=500),
                 "node": src_node,
                 "vmid": int(vmid),
+                "name": name,
                 "description": description,
                 "full": full,
                 "storage": storage,
@@ -444,7 +445,7 @@ class proxmox:
                 })
                 if block:
                     result = self.taskBlock(result)
-                    results.append()
+                    results.append(result)
                 
 
         return result
