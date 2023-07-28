@@ -385,7 +385,11 @@ class proxmox:
 
             for result in results:
                 if block:
+                    print("Wait for deletion task %s to finish" % result)
                     self.taskBlock(result)
+                else:
+                    print("Deletion task started %s" % result)
+
 
     def status_vms(self,status=None, filter=None, vmid=None):
         """set status of vms matching filter or vmid"""
