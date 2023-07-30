@@ -408,6 +408,17 @@ class proxmox:
                 results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
       
     def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None, block=True, duplicate=None):
+        """
+            Clone a vm.
+            vmid (int): the vm id to be cloned from
+            name (str): name of the cloned vm
+            description (str): description of the cloned vm
+            full (bool): full clone if true else linked clone
+            storage (str): which storage to use for the cloned vm
+            target (str): the target not for the cloned vm
+            block (bool): if true will wait for each clone to be finished (this prevent io saturation for exemple on NFS)
+            duplicate (int): how many clone to produce ? (each vm name is suffixed with an integer index)
+        """
         vms = self.get_vms(format="internal")
         vm = [v for v in vms if vmid == v["vmid"]]
         if len(vm) == 0:
