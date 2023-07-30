@@ -362,6 +362,7 @@ class proxmox:
             Parameters:
                 filter (string): regex filter applied on vms names (only the matching vms will be deleted)
                 vmid (int): vm id to delete
+                block (bool): if True will wait for each deletion to end. 
             Returns
                 True if success
         '''
@@ -389,7 +390,7 @@ class proxmox:
                     self.taskBlock(result)
                 else:
                     print("Deletion task started %s" % result)
-
+        return True
 
     def status_vms(self,status=None, filter=None, vmid=None):
         """set status of vms matching filter or vmid"""
