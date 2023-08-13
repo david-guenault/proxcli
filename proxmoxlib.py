@@ -382,7 +382,8 @@ class proxmox:
             if len(vms) == 0:
                 raise Exception("No vms found matching filter %s" % filter)
             for vm in vms:
-                results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).delete())
+                if vm["status"] == "stopped":
+                    results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).delete())
 
             for result in results:
                 if block:
@@ -406,7 +407,7 @@ class proxmox:
             if len(vm) == 1:
                 node = vm[0]["node"]
                 results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
-      
+
     def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None, block=True, duplicate=None) :
         """
             Clone a vm.
