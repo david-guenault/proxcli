@@ -1,5 +1,7 @@
 
-setup: clean venv
+all: clean venv setup tests
+
+setup:
 	venv/bin/python3 setup.py install
 
 tests:
@@ -12,4 +14,4 @@ venv:
 clean:
 	rm -Rf build dist *.egg-info __pycache__ venv
 
-.PHONY: setup tests venv clean
+.PHONY: all setup tests venv clean
