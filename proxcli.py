@@ -108,7 +108,7 @@ def ha_resources_add(
     max_restart: Annotated[int, typer.Option()] = 1,
     state: Annotated[str, typer.Option()] = "started"
     ):
-    p.create_ha_resources(
+    p.add_ha_resources(
         filter = filter,
         vmid = vmid,
         group = group,

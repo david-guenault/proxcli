@@ -228,7 +228,7 @@ class proxmox:
             resource["name"] = vm["name"]
         return self.output(headers=self.headers_ha_resources, data=resources, format="table")
 
-    def create_ha_resources(self, group, filter=None, vmid=None, comment="", max_relocate=1, max_restart=1, state="started"):
+    def add_ha_resources(self, group, filter=None, vmid=None, comment="", max_relocate=1, max_restart=1, state="started"):
         if filter:
             vms = self.get_vms(format="internal", filter=filter)
             for vm in vms:
