@@ -12,6 +12,8 @@ config = typer.Typer(no_args_is_help=True)
 networks = typer.Typer(no_args_is_help=True)
 tasks = typer.Typer(no_args_is_help=True,pretty_exceptions_enable=False,pretty_exceptions_short=False)
 cluster = typer.Typer(no_args_is_help=True)
+ha = typer.Typer(no_args_is_help=True)
+ha_groups = typer.Typer(no_args_is_help=True)
 vms_status = typer.Typer(no_args_is_help=True)
 
 containers_status = typer.Typer(no_args_is_help=True)
@@ -29,7 +31,12 @@ app.add_typer(cluster, name="cluster")
 
 nodes.add_typer(networks, name="networks")
 vms.add_typer(tags, name="tags", help="vms and containers tags related functions")
+
+ha.add_typer(ha_groups, name="groups", help="manage ha groups")
+
 cluster.add_typer(storages, name="storages", help="cluster storage commands")
+cluster.add_typer(ha, name="ha", help="high availibility commands")
+
 p = proxmox()
 
 ### CONFIG ####
@@ -55,6 +62,36 @@ def cluster_log():
 def storage_list():
     # list storages
     p.get_storages(format="table")
+
+@ha_groups.command("list")
+def ha_groups_list():
+    # list cluster ha groups
+    p.get_ha_groups(format="table")
+
+@ha_groups.command("create")
+def ha_groups_create(
+        group: Annotated[str, typer.Option()],
+        nodes: Annotated[str, typer.Option()],
+        restricted: Annotated[str, typer.Option()] = False,
+        nofailback: Annotated[bool, typer.Option()] = False
+    ):
+    # create a cluster ha group
+    p.create_ha_group(
+        group=group,
+        nodes=nodes,
+        restricted=restricted,
+        nofailback=nofailback
+    )
+
+@ha_groups.command("delete")
+def ha_groups_delete(
+        group: Annotated[str, typer.Option()]
+    ):
+    # create a cluster ha group
+    p.delete_ha_groups(
+        group=group
+    )
+
 
 ### CONTAINERS ###
 # containers dev stopped until i found a way to get containers ip address

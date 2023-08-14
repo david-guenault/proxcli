@@ -36,6 +36,7 @@ class proxmox:
             self.headers_lxc = config["headers"]["lxc"].split(",")
             self.headers_storage = config["headers"]["storage"].split(",")
             self.headers_tasks = config["headers"]["tasks"].split(",")
+            self.headers_ha_groups = config["headers"]["ha_groups"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]
@@ -171,6 +172,39 @@ class proxmox:
         )
 
     ### CLUSTER ###
+
+    def get_ha_groups(self, format="internal"):
+        """list cluster ha groups"""
+        hagroups = self.proxmox_instance.cluster.ha.groups.get()
+        print(hagroups)
+        return self.output(headers=self.headers_ha_groups, data=hagroups, format=format)
+
+    def create_ha_group(self, group, nodes, nofailback=False, restricted=False):
+        '''
+            create a hagroup
+            Parameters:
+                group (str): the ha group name
+                nodes (str): <node>[:<pri>]{,<node>[:<pri>]}*
+                                List of cluster node members, where a priority can be given to each node. A resource bound to a group will run on the available nodes with the highest priority. If there are more nodes in the highest priority class, the services will get distributed to those nodes. The priorities have a relative meaning only.
+                nofailback (bool):
+                restricted (bool):
+                tyep (enum):
+            Returns:
+                result (bool): true if success, false if failure
+        '''
+
+        nofailback = 0 if nofailback == False else 1
+        restricted = 0 if restricted == False else 1
+        self.proxmox_instance.cluster.ha.groups.post(**{
+            "group": group,
+            "nodes": nodes,
+            "nofailback": nofailback,
+            "restricted": restricted
+        })
+
+    def delete_ha_groups(self, group):
+        self.proxmox_instance.cluster.ha.groups.delete(group)
+
 
     def get_storages(self,format="json") :
         """list storages"""
