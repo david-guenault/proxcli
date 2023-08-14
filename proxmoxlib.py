@@ -37,6 +37,7 @@ class proxmox:
             self.headers_storage = config["headers"]["storage"].split(",")
             self.headers_tasks = config["headers"]["tasks"].split(",")
             self.headers_ha_groups = config["headers"]["ha_groups"].split(",")
+            self.headers_ha_resources = config["headers"]["ha_resources"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]
@@ -203,7 +204,63 @@ class proxmox:
         })
 
     def delete_ha_groups(self, group):
+        """delete cluster ha group
+
+        Args:
+            group (str): cluster ha group name to delete
+        """
         self.proxmox_instance.cluster.ha.groups.delete(group)
+        return True
+
+
+    def get_ha_resources(self):
+        """retrieve a list of cluster ha resources with named cluster ha groups
+
+        Returns:
+            list: list of ha resources
+        """
+        vms = self.get_vms(format="internal")
+        resources = self.proxmox_instance.cluster.ha.resources.get()
+        for resource in resources:
+            vmid = resource["sid"].split(":")[-1]
+            vm = [v for v in vms if int(v["vmid"]) == int(vmid)][0]
+            resource["vmid"] = vmid
+            resource["name"] = vm["name"]
+        return self.output(headers=self.headers_ha_resources, data=resources, format="table")
+
+    def create_ha_resources(self, group, filter=None, vmid=None, comment="", max_relocate=1, max_restart=1, state="started"):
+        if filter:
+            vms = self.get_vms(format="internal", filter=filter)
+            for vm in vms:
+                print("Adding resource %s to group %s" % (vm["vmid"], group))
+                self.proxmox_instance.cluster.ha.resources.post(**{
+                    'sid': vm["vmid"],
+                    'comment': comment,
+                    'group': group,
+                    'max_relocate': max_relocate,
+                    'max_restart': max_restart,
+                    'state': state
+                })
+        if vmid:
+            print("Adding resource %s to group %s" % (vmid, group))
+            self.proxmox_instance.cluster.ha.resources.post(**{
+                'sid': vmid,
+                'comment': comment,
+                'group': group,
+                'max_relocate': max_relocate,
+                'max_restart': max_restart,
+                'state': state
+            })
+
+    def delete_ha_resources(self, filter=None, vmid=None):
+        if filter:
+            vms = self.get_vms(format="internal", filter=filter)
+            for vm in vms:
+                print("Removing resource %s" % (vm["vmid"]))
+                self.proxmox_instance.cluster.ha.resources.delete(vm["vmid"])
+        
+        if vmid:
+            self.proxmox_instance.cluster.ha.resources.delete(vmid)            
 
 
     def get_storages(self,format="json") :

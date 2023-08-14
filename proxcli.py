@@ -14,6 +14,7 @@ tasks = typer.Typer(no_args_is_help=True,pretty_exceptions_enable=False,pretty_e
 cluster = typer.Typer(no_args_is_help=True)
 ha = typer.Typer(no_args_is_help=True)
 ha_groups = typer.Typer(no_args_is_help=True)
+ha_resources = typer.Typer(no_args_is_help=True)
 vms_status = typer.Typer(no_args_is_help=True)
 
 containers_status = typer.Typer(no_args_is_help=True)
@@ -33,6 +34,7 @@ nodes.add_typer(networks, name="networks")
 vms.add_typer(tags, name="tags", help="vms and containers tags related functions")
 
 ha.add_typer(ha_groups, name="groups", help="manage ha groups")
+ha.add_typer(ha_resources, name="resources", help="manage ha resources")
 
 cluster.add_typer(storages, name="storages", help="cluster storage commands")
 cluster.add_typer(ha, name="ha", help="high availibility commands")
@@ -92,6 +94,36 @@ def ha_groups_delete(
         group=group
     )
 
+@ha_resources.command("list")
+def ha_resources_list():
+    p.get_ha_resources()
+
+@ha_resources.command("add")
+def ha_resources_add(
+    group: Annotated[str, typer.Option()],
+    filter: Annotated[str, typer.Option()] = None,
+    vmid: Annotated[int, typer.Option()] = None,
+    comment: Annotated[str, typer.Option()] = "",
+    max_relocate: Annotated[int, typer.Option()] = 1,
+    max_restart: Annotated[int, typer.Option()] = 1,
+    state: Annotated[str, typer.Option()] = "started"
+    ):
+    p.create_ha_resources(
+        filter = filter,
+        vmid = vmid,
+        group = group,
+        comment = comment,
+        max_relocate = max_relocate,
+        max_restart = max_restart,
+        state = state
+    )
+
+@ha_resources.command("delete")
+def ha_resources_delete(
+    filter: Annotated[str, typer.Option()] = None,
+    vmid: Annotated[int, typer.Option()] = None
+):
+    p.delete_ha_resources(filter=filter, vmid=vmid)
 
 ### CONTAINERS ###
 # containers dev stopped until i found a way to get containers ip address
