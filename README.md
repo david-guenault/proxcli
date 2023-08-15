@@ -48,20 +48,10 @@ python setup.py
 
 
 # configuration
-you can easyli generate a configuration skeleton with the following command:
-
-```bash
-proxcli config save --host [comma separated list of pve nodes names] --user [username] --password []
-```
 
 The configuration will be stored at: **$HOME/.proxmox**
 
 NB: specify all of your pvenodes. If a node fail, proxcli will try to connect to the first available pve node
-
-# configuration customization
-
-You should never modify anything there except for credentials section. 
-Headers define what informations you want to show in table format. 
 
 ```ini
 [credentials]
