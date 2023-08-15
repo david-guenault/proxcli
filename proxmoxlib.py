@@ -203,7 +203,7 @@ class proxmox:
             "restricted": restricted
         })
 
-    def delete_ha_groups(self, group):
+    def delete_ha_group(self, group):
         """delete cluster ha group
 
         Args:
@@ -260,7 +260,30 @@ class proxmox:
                 self.proxmox_instance.cluster.ha.resources.delete(vm["vmid"])
         
         if vmid:
+            print("Removing resource %s" % (vmid))            
             self.proxmox_instance.cluster.ha.resources.delete(vmid)            
+
+    def migrate_ha_resources(self, node, filter=None, vmid=None):
+        if filter:
+            vms = self.get_vms(format="internal", filter=filter)
+            for vm in vms:
+                print("migrating resource %s to node %s" % (vm["vmid"], node))
+                self.proxmox_instance.cluster.ha.resources(vm["vmid"]).migrate.post(**{'node': node})
+        
+        if vmid:
+            print("migrating resource %s to node %s" % (vmid, node))
+            self.proxmox_instance.cluster.ha.resources(vmid).migrate.post(**{'node': node})            
+
+    def relocate_ha_resources(self, node, filter=None, vmid=None):
+        if filter:
+            vms = self.get_vms(format="internal", filter=filter)
+            for vm in vms:
+                print("migrating resource %s to node %s" % (vm["vmid"], node))
+                self.proxmox_instance.cluster.ha.resources(vm["vmid"]).relocate.post(**{'node': node})
+        
+        if vmid:
+            print("migrating resource %s to node %s" % (vmid, node))
+            self.proxmox_instance.cluster.ha.resources(vmid).relocate.post(**{'node': node})            
 
 
     def get_storages(self,format="json") :

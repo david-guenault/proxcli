@@ -90,7 +90,7 @@ def ha_groups_delete(
         group: Annotated[str, typer.Option()]
     ):
     # create a cluster ha group
-    p.delete_ha_groups(
+    p.delete_ha_group(
         group=group
     )
 
@@ -124,6 +124,23 @@ def ha_resources_delete(
     vmid: Annotated[int, typer.Option()] = None
 ):
     p.delete_ha_resources(filter=filter, vmid=vmid)
+
+@ha_resources.command("migrate")
+def ha_resources_migrate(
+    node: Annotated[str, typer.Option()],
+    filter: Annotated[str, typer.Option()] = None,
+    vmid: Annotated[int, typer.Option()] = None
+):
+    p.migrate_ha_resources(filter=filter, vmid=vmid, node=node)
+
+@ha_resources.command("relocate")
+def ha_resources_relocate(
+    node: Annotated[str, typer.Option()],
+    filter: Annotated[str, typer.Option()] = None,
+    vmid: Annotated[int, typer.Option()] = None
+):
+    p.relocate_ha_resources(filter=filter, vmid=vmid, node=node)
+
 
 ### CONTAINERS ###
 # containers dev stopped until i found a way to get containers ip address
