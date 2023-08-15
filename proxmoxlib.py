@@ -676,28 +676,18 @@ class proxmox:
         ids = vms_ids + containers_ids
         return ids    
 
-    def get_available_ids(self, min=100, max=199999999) :
-        '''
-        build a list of available containers and vms ids in the specified range
-        '''
-        ids = sorted(self.get_ids())
-        complete_sequence = []
-        for i in range(min, max, 1):
-            complete_sequence.append(i)
-        missing = [v for v in complete_sequence if v not in ids]
-        return missing
+    def get_next_id(self) :
+        """get next available container id
 
-    def get_next_id(self, min=100, max=199999999) :
+        Returns:
+            int: next available vm/container id
+        """
+
         '''
         get the next available container or vm id
-        if the id sequence contains hole, it will return the first available hole
-        ex: 1,2,3,5 > next available id is 4 (fill the hole)
-            Parameters:
-                TODO
-            Returns:
-                TODO
+
         '''
-        return self.get_available_ids(min=min, max=max)[0]
+        return int(self.proxmox_instance.cluster.nextid.get())
 
     ### INVENTORY ###
 

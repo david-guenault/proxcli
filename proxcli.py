@@ -194,7 +194,7 @@ def vms_list(filter: str = "^.*", out: str = "table", nodes: str = None, status:
 @vms.command("nextId")
 def vms_next_id():
     """get the next available vm/container id"""
-    print(p.get_next_id(max=1000))
+    print(p.get_next_id())
 
 @vms.command("start")
 def vms_status(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[int, typer.Option()] = None):
