@@ -39,6 +39,8 @@ class proxmox:
             self.headers_ha_groups = config["headers"]["ha_groups"].split(",")
             self.headers_ha_resources = config["headers"]["ha_resources"].split(",")
             self.headers_cluster_log = config["headers"]["cluster_log"].split(",")
+            self.headers_cluster_status = config["headers"]["cluster_status"].split(",")
+            self.headers_cluster_status_node = config["headers"]["cluster_status_node"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]
@@ -174,6 +176,17 @@ class proxmox:
         )
 
     ### CLUSTER ###
+
+    def get_cluster_status(self, format="internal"):
+        status = self.proxmox_instance.cluster.status.get()
+        print(status)
+        cluster_status = [c for c in status if c["type"] == "cluster"]
+        cluster_status_node = [c for c in status if c["type"] == "node"]
+
+        self.output(format=format, headers=self.headers_cluster_status, data=cluster_status)
+        print("")
+        self.output(format=format, headers=self.headers_cluster_status_node, data=cluster_status_node)
+
 
     def get_cluster_log(self, nodes, severities, format="internal", max=100):
         """get cluster logs

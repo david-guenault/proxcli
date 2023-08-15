@@ -55,6 +55,10 @@ def config_create(hosts: Annotated[str, typer.Option()], user: Annotated[str, ty
 
 ### CLUSTER ###
 
+@cluster.command("status")
+def cluster_status(format: str = "table"):
+    p.get_cluster_status(format=format)
+
 @cluster.command("log")
 def cluster_log(
     out: str = "table", 
