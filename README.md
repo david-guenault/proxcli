@@ -60,7 +60,32 @@ NB: specify all of your pvenodes. If a node fail, proxcli will try to connect to
 
 # configuration customization
 
-TBD
+You should never modify anything there except for credentials section. 
+Headers define what informations you want to show in table format. 
+
+```ini
+[credentials]
+hosts=host1,host2,...,hostn
+user=user
+password=password
+[headers]
+nodes=node,status
+qemu=vmid,name,status,pid,node,cpu,mem,template,ip,tags
+lxc=vmid,name,status,pid,node,cpu,mem,ip,tags
+storage=storage,node,content,type,active,enabled,shared,used_fraction
+tasks=starttime,endtime,node,user,type,id,status
+ha_groups=group,type,nodes,digest,restricted,nofailback
+ha_resources=vmid,name,group,type,digest,sid,max_relocate,state
+cluster_log=date,severity, user,msg,node,pid,tag,uid
+cluster_status=id,type,quorate,version,name,nodes
+cluster_status_node=id,nodeid,online,name,type,local,ip,level
+[data]
+colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow,failed:red,error:red,OK:green,problems:red,panic:red,alert:red,critical:red,warning:orage,notice:blue,info:blue,debug:violet
+style=STYLE_BOX
+[tasks]
+polling_interval=1
+timeout=300
+```
 
 # before using
 
