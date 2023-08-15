@@ -38,6 +38,7 @@ class proxmox:
             self.headers_tasks = config["headers"]["tasks"].split(",")
             self.headers_ha_groups = config["headers"]["ha_groups"].split(",")
             self.headers_ha_resources = config["headers"]["ha_resources"].split(",")
+            self.headers_cluster_log = config["headers"]["cluster_log"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]
@@ -173,6 +174,39 @@ class proxmox:
         )
 
     ### CLUSTER ###
+
+    def get_cluster_log(self, nodes, severities, format="internal", max=100):
+        """get cluster logs
+
+        Args:
+            format (str, optional): _description_. Defaults to "internal".
+            max (int, optional): _description_. Defaults to 100.
+        """
+
+        translate_severity = {
+            '0': "panic",    
+            '1': "alert",    
+            '2': "critical", 
+            '3': "error",    
+            '4': "warning",  
+            '5': "notice",   
+            '6': "info",     
+            '7': "debug"
+        }
+        logs = self.proxmox_instance.cluster.log.get(**{'max': max})
+        nodes = [n.strip() for n in nodes.split(",")]
+        severities = [s.strip() for s in severities.split(",")]
+        filtered_logs = []
+        for log in logs:
+            log["severity"] = translate_severity[str(log["pri"])]
+            log["date"] = self.readable_date(log["time"])
+            if log["severity"] in severities:
+                if len(nodes) == 0:
+                    filtered_logs.append(log)
+                else:
+                    if log["node"] in nodes:
+                        filtered_logs.append(log)
+        return self.output(headers=self.headers_cluster_log, data=filtered_logs, format=format)
 
     def get_ha_groups(self, format="internal"):
         """list cluster ha groups"""

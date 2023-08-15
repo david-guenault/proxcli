@@ -56,9 +56,14 @@ def config_create(hosts: Annotated[str, typer.Option()], user: Annotated[str, ty
 ### CLUSTER ###
 
 @cluster.command("log")
-def cluster_log():
+def cluster_log(
+    out: str = "table", 
+    max: int = 100,
+    nodes: str = "pve1,pve2,pve3",
+    severities: str = "panic,alert,critical,error,warning,notice,info,debug"
+):
     # show cluster log
-    p.get_cluster_log()
+    p.get_cluster_log(format=out, max=max, nodes=nodes,severities=severities)
 
 @storages.command("list")
 def storage_list():
