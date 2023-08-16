@@ -2,6 +2,7 @@
 import typer
 from typing_extensions import Annotated
 from proxmoxlib import proxmox
+import os
 
 app = typer.Typer(no_args_is_help=True)
 vms = typer.Typer(no_args_is_help=True)
@@ -16,11 +17,21 @@ ha = typer.Typer(no_args_is_help=True)
 ha_groups = typer.Typer(no_args_is_help=True)
 ha_resources = typer.Typer(no_args_is_help=True)
 vms_status = typer.Typer(no_args_is_help=True)
-
+permissions = typer.Typer(no_args_is_help=True)
+groups = typer.Typer(no_args_is_help=True)
+users = typer.Typer(no_args_is_help=True)
+roles = typer.Typer(no_args_is_help=True)
+pools = typer.Typer(no_args_is_help=True)
+replications = typer.Typer(no_args_is_help=True)
 containers_status = typer.Typer(no_args_is_help=True)
 
 inventory = typer.Typer(no_args_is_help=True)
 tags = typer.Typer(no_args_is_help=True)
+
+permissions.add_typer(groups, name="groups")
+permissions.add_typer(users, name="users")
+permissions.add_typer(roles, name="roles")
+permissions.add_typer(pools, name="pools")
 
 app.add_typer(vms, name="vms")
 app.add_typer(containers, name="containers", help="Containers related functions")
@@ -29,6 +40,8 @@ app.add_typer(inventory, name="inventory", help="Ansible inventory related funct
 app.add_typer(config, name="config")
 app.add_typer(tasks, name="tasks")
 app.add_typer(cluster, name="cluster")
+app.add_typer(permissions, name="permissions")
+app.add_typer(replications, name="replications")
 
 nodes.add_typer(networks, name="networks")
 vms.add_typer(tags, name="tags", help="vms and containers tags related functions")
@@ -41,6 +54,32 @@ cluster.add_typer(ha, name="ha", help="high availibility commands")
 
 p = proxmox()
 
+### PERMISSIONS ###
+@users.command("list")
+def users_list():
+    pass
+
+@users.command("create")
+def users_create():
+    pass
+
+@users.command("delete")
+def users_delete():
+    pass
+
+@groups.command("list")
+def groups_list():
+    pass
+
+@groups.command("create")
+def groups_create():
+    pass
+
+@groups.command("delete")
+def groups_list():
+    pass
+
+
 ### CONFIG ####
 
 @config.command("show")
@@ -49,9 +88,13 @@ def config_show():
     p.dump_config()
 
 @config.command("create")
-def config_create(hosts: Annotated[str, typer.Option()], user: Annotated[str, typer.Option()], password: Annotated[str, typer.Option()]):
+def config_create(
+    hosts: Annotated[str, typer.Option()], 
+    user: Annotated[str, typer.Option()], 
+    password: Annotated[str, typer.Option()]
+):
     # generate config
-    p.create_config(hosts, user, password)
+    p.create_config(hosts=hosts, user=user, password=password)
 
 ### CLUSTER ###
 

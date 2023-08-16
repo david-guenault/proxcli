@@ -14,14 +14,23 @@ urllib3.disable_warnings()
 from proxmoxer.tools import Tasks
 from datetime import datetime
 import enum
+import inspect
+import sys
 
 class proxmox:
     def __init__(self) -> None:
-        self.load_config()
-        self.proxmox_instance = self.proxmox()
-    
+        result = self.load_config()
+        if result:
+            self.proxmox_instance = self.proxmox()            
+
     ### UTILITY ###
     
+    def get_caller(self):
+        curframe = inspect.currentframe()
+        calframe = inspect.getouterframes(curframe, 2)
+        print(calframe)
+        return calframe[1][3]
+
     def load_config(self) -> None:
         """load configuration"""
         configfile = os.path.expanduser('~') + "/.proxmox"
@@ -45,15 +54,16 @@ class proxmox:
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]
             self.table_colorize = dict([ v.split(':') for v in config["data"]["colorize"].split(",") ])
+            return True
         else:
-            raise("Config file not found")
-    
+            return False
+
     def select_active_node(self) -> None:
         """
         select the first available node 
         iterate over nodes, ping and set self.host property
         """
-        
+
         for host in self.hosts:
             url = "https://%s:8006" % host
             try:
@@ -165,6 +175,7 @@ class proxmox:
         print("Waiting for task %s to finish" % task)
         result = Tasks.blocking_status(prox=self.proxmox_instance, task_id=task, timeout=int(self.task_timeout), polling_interval=float(self.task_polling_interval))        
 
+
     def proxmox(self) :
         """create proxmox api instance from the first available node found"""
         self.select_active_node()
@@ -177,15 +188,15 @@ class proxmox:
 
     ### CLUSTER ###
 
+
     def get_cluster_status(self, format="internal"):
         status = self.proxmox_instance.cluster.status.get()
-        print(status)
         cluster_status = [c for c in status if c["type"] == "cluster"]
         cluster_status_node = [c for c in status if c["type"] == "node"]
 
         self.output(format=format, headers=self.headers_cluster_status, data=cluster_status)
-        print("")
         self.output(format=format, headers=self.headers_cluster_status_node, data=cluster_status_node)
+
 
 
     def get_cluster_log(self, nodes, severities, format="internal", max=100):
@@ -221,11 +232,13 @@ class proxmox:
                         filtered_logs.append(log)
         return self.output(headers=self.headers_cluster_log, data=filtered_logs, format=format)
 
+
     def get_ha_groups(self, format="internal"):
         """list cluster ha groups"""
         hagroups = self.proxmox_instance.cluster.ha.groups.get()
         print(hagroups)
         return self.output(headers=self.headers_ha_groups, data=hagroups, format=format)
+
 
     def create_ha_group(self, group, nodes, nofailback=False, restricted=False):
         '''
@@ -249,6 +262,7 @@ class proxmox:
             "nofailback": nofailback,
             "restricted": restricted
         })
+
 
     def delete_ha_group(self, group):
         """delete cluster ha group
@@ -275,6 +289,7 @@ class proxmox:
             resource["name"] = vm["name"]
         return self.output(headers=self.headers_ha_resources, data=resources, format="table")
 
+
     def add_ha_resources(self, group, filter=None, vmid=None, comment="", max_relocate=1, max_restart=1, state="started"):
         if filter:
             vms = self.get_vms(format="internal", filter=filter)
@@ -299,6 +314,7 @@ class proxmox:
                 'state': state
             })
 
+
     def delete_ha_resources(self, filter=None, vmid=None):
         if filter:
             vms = self.get_vms(format="internal", filter=filter)
@@ -309,6 +325,7 @@ class proxmox:
         if vmid:
             print("Removing resource %s" % (vmid))            
             self.proxmox_instance.cluster.ha.resources.delete(vmid)            
+
 
     def migrate_ha_resources(self, node, filter=None, vmid=None):
         if filter:
@@ -321,6 +338,7 @@ class proxmox:
             print("migrating resource %s to node %s" % (vmid, node))
             self.proxmox_instance.cluster.ha.resources(vmid).migrate.post(**{'node': node})            
 
+
     def relocate_ha_resources(self, node, filter=None, vmid=None):
         if filter:
             vms = self.get_vms(format="internal", filter=filter)
@@ -331,6 +349,7 @@ class proxmox:
         if vmid:
             print("migrating resource %s to node %s" % (vmid, node))
             self.proxmox_instance.cluster.ha.resources(vmid).relocate.post(**{'node': node})            
+
 
 
     def get_storages(self,format="json") :
@@ -351,6 +370,7 @@ class proxmox:
 
     ### NODES ###
 
+
     def get_nodes(self, format="internal", filter=None) :
         '''
         Get all node as a list
@@ -365,6 +385,7 @@ class proxmox:
         if filter:
             nodes = [n for n in nodes if self.ismatching(filter, n["node"])]
         return self.output(headers=self.headers_nodes, data=nodes, format=format)
+
 
     def get_tasks(self, format="internal", errors=0,limit=50,source="all",vmid=None,nodes=None) :
         available_nodes = self.get_nodes(format="internal")
@@ -391,6 +412,7 @@ class proxmox:
             t['endtime'] = self.readable_date(t['endtime'])
         self.output(headers=self.headers_tasks, data=tasks, format=format)
 
+
     def get_nodes_network(self, nodes=None, type="bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format="internal") :
         if not nodes or not types: 
             return []
@@ -407,6 +429,7 @@ class proxmox:
 
 
     ### VMS ###
+
 
     def get_vm_public_ip(self,node, vmid, type="ipv4") :
         '''
@@ -432,6 +455,7 @@ class proxmox:
         except Exception as e:
             ip = None
         return ip
+
 
     def get_vms(self, format="json", filter=None, nodes=None, status="stopped,running") :
         '''
@@ -476,6 +500,7 @@ class proxmox:
                             updated_vms.append(vm)
         return self.output(headers=self.headers_qemu, data=updated_vms, format=format)            
 
+
     def migrate_vms(self, target_node, filter=None, vmid=None) :
         if filter and vmid:
             raise Exception("filter and vmid arguments are mutualy exclusive")
@@ -502,6 +527,7 @@ class proxmox:
                     self.proxmox_instance.nodes(source_node).qemu(vm["vmid"]).migrate.post(**{'node':source_node,'target':target_node,'vmid':vm["vmid"]})
                     rprint("Migration vm %s from %s to %s " % (vm["name"], source_node, target_node))
 
+
     def set_tags(self, tags="", filter=None) :
         vms = self.get_vms(format="json", filter=filter)
         for vm in vms:
@@ -514,6 +540,7 @@ class proxmox:
         tags = [element.replace(";", ",").split(",") for element in extract]
         tags = list(set([item for sublist in tags for item in sublist]))
         print(", ".join(tags))
+
 
     def delete_vms(self, filter=None, vmid=None, block=True) :
         '''
@@ -554,6 +581,7 @@ class proxmox:
                     print("Deletion task started %s" % result)
         return True
 
+
     def status_vms(self,status=None, filter=None, vmid=None) :
         """set status of vms matching filter or vmid"""
         vms = self.get_vms(format="internal", filter=filter)
@@ -568,6 +596,7 @@ class proxmox:
             if len(vm) == 1:
                 node = vm[0]["node"]
                 results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
+
 
     def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None, block=True, duplicate=None) :
         """
@@ -632,6 +661,7 @@ class proxmox:
 
     ### CONTAINERS (need rework) ###
 
+
     def get_container_config(self, vmid) :
         """retrieve container configuration"""
         containers = self.get_containers(format="internal", filter=".*")
@@ -642,6 +672,7 @@ class proxmox:
             raise Exception("container with id %s not found" % vmid)
         config = self.proxmox_instance.nodes(node).lxc(vmid).config.get()
         return config
+
 
     def status_containers(self,status=None, filter=None) :
         """set status of containers matching filter"""
@@ -678,17 +709,6 @@ class proxmox:
 
     ### CONTAINER AND VMS 
     
-    def get_ids(self) :
-        '''
-        return a list of existing containers and vms ids
-        '''
-        vms = self.get_vms(format="internal")
-        containers = self.get_containers(format="internal")
-        vms_ids = [int(v["vmid"]) for v in vms]
-        containers_ids = [int(c["vmid"]) for c in containers]
-        ids = vms_ids + containers_ids
-        return ids    
-
     def get_next_id(self) :
         """get next available container id
 
@@ -745,7 +765,7 @@ class proxmox:
 
     ### CONFIG ###
  
-    def create_config(self, hosts=None, user=None, password=None) :
+    def create_config(self, hosts=None, user=None, password=None):
         config = '''
         [credentials]
         hosts=%s
@@ -757,19 +777,24 @@ class proxmox:
         lxc=vmid,name,status,pid,node,cpu,mem,ip,tags
         storage=storage,node,content,type,active,enabled,shared,used_fraction
         tasks=starttime,endtime,node,user,type,id,status
+        ha_groups=group,type,nodes,digest,restricted,nofailback
+        ha_resources=vmid,name,group,type,digest,sid,max_relocate,state
+        cluster_log=date,severity, user,msg,node,pid,tag,uid
+        cluster_status=id,type,quorate,version,name,nodes
+        cluster_status_node=id,nodeid,online,name,type,local,ip,level
         [data]
-        colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow,failed:red,error:red,OK:green,problems:red
+        colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow,failed:red,error:red,OK:green,problems:red,panic:red,alert:red,critical:red,warning:orage,notice:blue,info:blue,debug:violet
         style=STYLE_BOX
         [tasks]
         polling_interval=1
-        timeout=300
-
+        timeout=300 
         ''' % (hosts, user,password)
         config_file = "%s/.proxmox" % os.environ.get("HOME")
         if not os.path.exists(config_file):
             h = open(config_file, "w")
             h.write(config)
             h.close()
+            print("Config file created at ~/.proxmox")
         else:
             print("A configuration already exist at %s" % config_file)
 
