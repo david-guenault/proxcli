@@ -562,6 +562,26 @@ class proxmox():
 
     ### VMS ###
 
+    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory):
+        vms = self.get_vms(format="internal")
+        vm = None
+        if vmid:
+            vm = [v for v in vms if v["vmid"] == vmid]
+        else:
+            vm = [v for v in vms if v["name"] == vmname]
+        if len(vm) == 0:
+            raise("Error: no vm match the requested vmid or name")
+        node = vm[0]["node"]
+        vmid = vm[0]["vmid"] if not vmid else vmid
+        if cores:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cores": cores})
+        if sockets:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"sockets": sockets})
+        if cpulimit:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cpulimit": cpulimit})
+        if memory:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"memory": memory})
+
 
     def get_vm_public_ip(self,node, vmid, type="ipv4") :
         '''
