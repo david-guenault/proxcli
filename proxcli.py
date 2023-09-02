@@ -17,21 +17,28 @@ ha = typer.Typer(no_args_is_help=True)
 ha_groups = typer.Typer(no_args_is_help=True)
 ha_resources = typer.Typer(no_args_is_help=True)
 vms_status = typer.Typer(no_args_is_help=True)
+replications = typer.Typer(no_args_is_help=True)
+containers_status = typer.Typer(no_args_is_help=True)
+access = typer.Typer(no_args_is_help=True)
+
 permissions = typer.Typer(no_args_is_help=True)
 groups = typer.Typer(no_args_is_help=True)
 users = typer.Typer(no_args_is_help=True)
 roles = typer.Typer(no_args_is_help=True)
-pools = typer.Typer(no_args_is_help=True)
-replications = typer.Typer(no_args_is_help=True)
-containers_status = typer.Typer(no_args_is_help=True)
+acl = typer.Typer(no_args_is_help=True)
+password = typer.Typer(no_args_is_help=True)
+ticket = typer.Typer(no_args_is_help=True)
 
 inventory = typer.Typer(no_args_is_help=True)
 tags = typer.Typer(no_args_is_help=True)
 
-permissions.add_typer(groups, name="groups")
-permissions.add_typer(users, name="users")
-permissions.add_typer(roles, name="roles")
-permissions.add_typer(pools, name="pools")
+access.add_typer(groups, name="groups")
+access.add_typer(users, name="users")
+access.add_typer(roles, name="roles")
+access.add_typer(acl, name="acl")
+access.add_typer(password, name="password")
+access.add_typer(permissions, name="permissions")
+access.add_typer(ticket, name="ticket")
 
 app.add_typer(vms, name="vms")
 app.add_typer(containers, name="containers", help="Containers related functions")
@@ -40,8 +47,8 @@ app.add_typer(inventory, name="inventory", help="Ansible inventory related funct
 app.add_typer(config, name="config")
 app.add_typer(tasks, name="tasks")
 app.add_typer(cluster, name="cluster")
-app.add_typer(permissions, name="permissions")
 app.add_typer(replications, name="replications")
+app.add_typer(access, name="access")
 
 nodes.add_typer(networks, name="networks")
 vms.add_typer(tags, name="tags", help="vms and containers tags related functions")
@@ -55,29 +62,126 @@ cluster.add_typer(ha, name="ha", help="high availibility commands")
 p = proxmox()
 
 ### PERMISSIONS ###
-@users.command("list")
-def users_list():
-    pass
 
-@users.command("create")
-def users_create():
-    pass
+# @roles.command("list")
+# def roles_list(
+#     format: Annotated[str, typer.Option()] = "table"
+# ):
+#     p.list_roles(format=format)
 
-@users.command("delete")
-def users_delete():
-    pass
 
-@groups.command("list")
-def groups_list():
-    pass
+# @acl.command("list")
+# def acl_list(
+#     format: Annotated[str, typer.Option()] = "table"
+# ):
+#     p.list_acl(format=format)
 
-@groups.command("create")
-def groups_create():
-    pass
+# @acl.command("path")
+# def acl_path():
+#     print(", ".join(p.acl_path_list()))
 
-@groups.command("delete")
-def groups_list():
-    pass
+# @acl.command("create")
+# def acl_create(
+#     path: Annotated[str,typer.Option()],
+#     roles: Annotated[str,typer.Option()],
+#     groups: Annotated[str,typer.Option()] = "",
+#     propagate: Annotated[bool,typer.Option()] = True,
+#     tokens: Annotated[str,typer.Option()] = "",
+#     users: Annotated[str,typer.Option()] = ""
+# ):
+#     p.create_acl(
+#         path=path,
+#         roles=roles,
+#         groups=groups,
+#         propagate=propagate,
+#         tokens=tokens,
+#         users=users
+#     )
+
+# @users.command("list")
+# def users_list(
+#     format: Annotated[str, typer.Option()] = "table"
+# ):
+#     p.list_users(format=format)
+
+# @users.command("create")
+# def users_create(
+#     name: str,
+#     password: Annotated[str, typer.Option()] = "",
+#     firstname: Annotated[str, typer.Option()] = "",
+#     lastname: Annotated[str, typer.Option()] = "",
+#     comment: Annotated[str, typer.Option()] = "",
+#     email: Annotated[str, typer.Option()] = "",
+#     enable: Annotated[bool, typer.Option()] = True,
+#     expire: Annotated[int, typer.Option()] = 0,
+#     groups: Annotated[str, typer.Option()] = "",
+#     keys: Annotated[str, typer.Option()] = "" 
+# ):
+#     p.create_user(
+#         name=name, password=password,
+#         firstname=firstname, lastname=lastname,
+#         comment=comment, email=email,
+#         enable=enable, expire=expire,
+#         groups=groups,keys=keys
+#     )
+
+# @users.command("password")
+# def users_password(
+#     name: str,
+#     password: str
+# ):
+#     p.update_password(name=name, password=password)
+
+# @users.command("update")
+# def users_update(
+#     name: str,
+#     firstname: Annotated[str, typer.Option()] = "",
+#     lastname: Annotated[str, typer.Option()] = "",
+#     comment: Annotated[str, typer.Option()] = "",
+#     email: Annotated[str, typer.Option()] = "",
+#     enable: Annotated[bool, typer.Option()] = True,
+#     expire: Annotated[int, typer.Option()] = 0,
+#     groups: Annotated[str, typer.Option()] = "",
+#     keys: Annotated[str, typer.Option()] = "" 
+# ):
+#     p.update_user(
+#         name=name,
+#         firstname=firstname, lastname=lastname,
+#         comment=comment, email=email,
+#         enable=enable, expire=expire,
+#         groups=groups,keys=keys
+#     )
+
+# @users.command("delete")
+# def users_delete(name: str):
+#     p.delete_user(name=name)
+
+# @groups.command("list")
+# def groups_list(
+#     format: Annotated[str, typer.Option()] = "table"
+# ):
+#     p.list_groups(format=format)
+
+# @groups.command("create")
+# def groups_create(
+#     name: str,
+#     comment: Annotated[str, typer.Option()] = ""
+# ):
+#     p.create_group(comment=comment, name=name)
+
+# @groups.command("delete")
+# def groups_list(
+#     name: str
+# ):
+#     p.delete_group(name=name)
+
+# @groups.command("update")
+# def groups_list(
+#     name: str,
+#     comment: Annotated[str, typer.Option()] = "",
+#     users: Annotated[str, typer.Option()] = ""
+# ):
+#     p.update_group(name=name, comment=comment)
 
 
 ### CONFIG ####
@@ -267,7 +371,7 @@ def vms_status(filter: Annotated[str, typer.Option()] = None, vmid: Annotated[in
 def vms_clone(
     vmid: Annotated[int, typer.Option()], 
     name: Annotated[str, typer.Option()], 
-    description: Annotated[str, typer.Option] = "", 
+    description: Annotated[str, typer.Option()] = "", 
     full: Annotated[bool, typer.Option("--full")] = False,
     storage: Annotated[str, typer.Option()] = None,
     target: Annotated[str, typer.Option()] = None,

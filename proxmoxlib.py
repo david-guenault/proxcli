@@ -17,11 +17,139 @@ import enum
 import inspect
 import sys
 
-class proxmox:
+class proxmox():
     def __init__(self) -> None:
         result = self.load_config()
         if result:
             self.proxmox_instance = self.proxmox()            
+
+    # ### ACCESS ###
+
+    # def list_roles(self, format="table"):
+    #     return self.output(
+    #         data=self.proxmox_instance.access.roles.get(),
+    #         format=format,
+    #         headers=self.headers_access_roles
+    #     )
+
+
+    # def acl_path_list(self):
+    #     return [
+    #         "/", "/access", "/nodes", "/pool", "/sdn", "/storage", "/vms"
+    #     ]
+
+
+
+    # def acl_path_is_valid(self, path):
+    #     for p in self.acl_path_list():
+    #         if p.startswith(path):
+    #             return True
+    #     return False
+
+    # def list_acl(self, format='table'):
+    #     return self.output(
+    #         data=self.proxmox_instance.access.acl.get(),
+    #         headers=self.headers_access_acl,
+    #         format=format
+    #     )
+
+    # def create_acl(
+    #     self, 
+    #     path,
+    #     roles,
+    #     groups,
+    #     propagate,
+    #     tokens,
+    #     users                   
+    # ):
+    #     if not self.acl_path_is_valid(path):
+    #         raise("invalid path")
+        
+    #     self.proxmox_instance.access.acl.put(**{
+    #         path,
+    #         roles,
+    #         groups,
+    #         propagate,
+    #         tokens,
+    #         users                   
+    #     })
+
+    # def list_users(self, format='table', enabled=True, full=True):
+    #     return self.output(
+    #         data=self.proxmox_instance.access.users.get(**{
+    #             'full': 1 
+    #         }),
+    #         headers=self.headers_access_users,
+    #         format=format
+    #     )
+
+    # def create_user(self, 
+    #     name, password="", 
+    #     firstname="", lastname="", 
+    #     comment="", email="", 
+    #     enable=True, expire=0,
+    #     groups="", keys=""
+    # ):
+    #     self.proxmox_instance.access.users.post(**{
+    #         "userid": name, 
+    #         "password": password, 
+    #         "firstname": firstname, 
+    #         "lastname": lastname, 
+    #         "comment": comment, 
+    #         "email": email, 
+    #         "enable": 1 if enable else 0, 
+    #         "expire": expire,
+    #         "groups": groups, 
+    #         "keys": keys
+    #     })
+
+    # def update_user(self, 
+    #     name, 
+    #     firstname="", lastname="", 
+    #     comment="", email="", 
+    #     enable=True, expire=0,
+    #     groups="", keys=""
+    # ):
+    #     self.proxmox_instance.access.users.put(name,**{
+    #         "firstname": firstname, 
+    #         "lastname": lastname, 
+    #         "comment": comment, 
+    #         "email": email, 
+    #         "enable": 1 if enable else 0, 
+    #         "expire": expire,
+    #         "groups": groups, 
+    #         "keys": keys
+    #     })
+
+    # def update_password(self, name, password):
+    #     self.proxmox_instance.access.password.put(**{
+    #         "userid": name, 
+    #         "password":password
+    #     })
+
+    # def delete_user(self, name):
+    #     self.proxmox_instance.access.users(name).delete()
+
+    # def list_groups(self, format='table'):
+    #     return self.output(
+    #         data=self.proxmox_instance.access.groups.get(),
+    #         headers=self.headers_access_groups,
+    #         format=format
+    #     )
+
+    # def create_group(self, name, comment=""):
+    #     self.proxmox_instance.access.groups.post(**{
+    #         'groupid': name,
+    #         'comment': comment
+    # })
+
+    # def update_group(self, name, comment=""):
+    #     self.proxmox_instance.access.groups.put(name, **{
+    #         'comment': comment,
+    #     })
+
+    # def delete_group(self, name):
+    #      self.proxmox_instance.access.groups.delete(name)        
 
     ### UTILITY ###
     
@@ -50,6 +178,10 @@ class proxmox:
             self.headers_cluster_log = config["headers"]["cluster_log"].split(",")
             self.headers_cluster_status = config["headers"]["cluster_status"].split(",")
             self.headers_cluster_status_node = config["headers"]["cluster_status_node"].split(",")
+            self.headers_access_groups = config["headers"]["access_groups"].split(",")
+            self.headers_access_users = config["headers"]["access_users"].split(",")
+            self.headers_access_acl = config["headers"]["access_acl"].split(",")
+            self.headers_access_roles = config["headers"]["access_roles"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]

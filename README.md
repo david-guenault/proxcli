@@ -46,7 +46,6 @@ Just pull the new branch ans issue the command from within the repository
 python setup.py
 ```
 
-
 # configuration
 
 The configuration will be stored at: **$HOME/.proxmox**
