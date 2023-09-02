@@ -3,3 +3,4 @@ dist/*
 proxcli.egg-info/*
 venv/*
 __pycache__/*
+.vscode/*
