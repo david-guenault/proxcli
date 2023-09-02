@@ -546,6 +546,7 @@ class proxmox():
 
 
     def get_nodes_network(self, nodes=None, type="bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format="internal") :
+
         if not nodes or not types: 
             return []
         else:
@@ -562,17 +563,45 @@ class proxmox():
 
     ### VMS ###
 
-    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory):
+    def get_vm_by_id_or_name(self, vmid=None, vmname=None):
         vms = self.get_vms(format="internal")
         vm = None
         if vmid:
-            vm = [v for v in vms if v["vmid"] == vmid]
+            vm = [v for v in vms if v["vmid"] == int(vmid)]
         else:
             vm = [v for v in vms if v["name"] == vmname]
         if len(vm) == 0:
+            return False
+        return vm[0]
+
+    def vms_config_get(self, vmid):
+        vm = self.get_vm_by_id_or_name(vmid=vmid)
+        node = vm["node"]
+        vmid = vm["vmid"] if not vmid else vmid
+        config = self.proxmox_instance.get("nodes/%s/qemu/%s/config" % (node,vmid))
+        return config
+
+    def vms_resize_disk(self, size, vmid=None, vmname=None,disk=None):
+        vm = self.get_vm_by_id_or_name(vmid, vmname)
+        if not vm:
             raise("Error: no vm match the requested vmid or name")
-        node = vm[0]["node"]
-        vmid = vm[0]["vmid"] if not vmid else vmid
+        node = vm["node"]
+        vmid = vm["vmid"] if not vmid else vmid
+        config = self.vms_config_get(vmid)
+        if not disk:
+            # if disk is not specified resize the default boot disk
+            boot = config["boot"].split(";")
+            disk = [v for v in boot if "order" in v][0].split("=")[1]
+        self.proxmox_instance.nodes(node).qemu(vmid).resize.put(**{"disk": disk, "size": size})
+        
+
+    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory):
+        vm = self.get_vm_by_id_or_name(vmid, vmname)
+        if not vm:
+            raise("Error: no vm match the requested vmid or name")
+        node = vm["node"]
+        vmid = vm["vmid"] if not vmid else vmid
+
         if cores:
             self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cores": cores})
         if sockets:

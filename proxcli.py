@@ -330,6 +330,26 @@ def ha_resources_relocate(
 
 ### VMS ###
 
+@vms.command("resize")
+def vms_disk_resize(
+    size: Annotated[str, typer.Option()],
+    vmid: Annotated[int, typer.Option()] = None,
+    vmname: Annotated[int, typer.Option()] = None,
+    disk: Annotated[str, typer.Option()] = None
+    
+):
+    p.vms_resize_disk(
+        vmid=vmid,
+        vmname=vmname,
+        size=size,
+        disk=disk
+    )
+
+@vms.command("dump_config")
+def vms_dump_config(vmid: str):
+    config = p.vms_config_get(vmid)
+    p.output(format="json", data=config)
+
 @vms.command("set")
 def vms_set(
     vmid: Annotated[int, typer.Option()] = None,
