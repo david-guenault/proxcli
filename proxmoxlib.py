@@ -759,7 +759,7 @@ class proxmox():
 
         if not duplicate:
             result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
-                "newid": self.get_next_id(max=500),
+                "newid": self.get_next_id(),
                 "node": src_node,
                 "vmid": int(vmid),
                 "name": name,
@@ -775,7 +775,7 @@ class proxmox():
             for index in range(duplicate):
                 instance_name = "%s-%s" % (name, str(index))
                 result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
-                    "newid": self.get_next_id(max=500),
+                    "newid": self.get_next_id(),
                     "node": src_node,
                     "vmid": int(vmid),
                     "name": instance_name,
