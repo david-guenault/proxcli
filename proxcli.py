@@ -330,6 +330,25 @@ def ha_resources_relocate(
 
 ### VMS ###
 
+@vms.command("set")
+def vms_set(
+    vmid: Annotated[int, typer.Option()] = None,
+    vmname: Annotated[int, typer.Option()] = None,
+    cores: Annotated[int, typer.Option()] = None,
+    sockets: Annotated[int, typer.Option()] = None,
+    cpulimit: Annotated[int, typer.Option()] = None,
+    memory: Annotated[int, typer.Option()] = None,
+    name: Annotated[str, typer.Option()] = None,
+):
+    p.set_vms(
+        vmid=vmid,
+        vmname=vmname,
+        cores=cores,
+        sockets=sockets,
+        cpulimit=cpulimit,
+        memory=memory
+    )
+
 @vms.command("migrate")
 def vms_migrate(target_node: Annotated[str, typer.Option()], vmid: Annotated[str, typer.Option()] = None, filter: Annotated[str, typer.Option()] = None):
     # migrate vms matching filter to a specified target_node
