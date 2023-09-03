@@ -16,6 +16,8 @@ from datetime import datetime
 import enum
 import inspect
 import sys
+import requests
+from requests_toolbelt import MultipartEncoder
 
 class proxmox():
     def __init__(self) -> None:
@@ -317,6 +319,17 @@ class proxmox():
             password=self.password,
             verify_ssl=False
         )
+
+    ### STORAGE ###
+    def storages_upload(
+        self,
+        file,
+        node,
+        storage,
+        content
+    ):
+        f = open(file,'rb')
+        self.proxmox_instance.nodes(node).storage(storage).upload.post(content=content, filename=f)
 
     ### CLUSTER ###
 
