@@ -353,12 +353,15 @@ def vms_dump_config(vmid: str):
 @vms.command("set")
 def vms_set(
     vmid: Annotated[int, typer.Option()] = None,
-    vmname: Annotated[int, typer.Option()] = None,
+    vmname: Annotated[str, typer.Option()] = None,
     cores: Annotated[int, typer.Option()] = None,
     sockets: Annotated[int, typer.Option()] = None,
     cpulimit: Annotated[int, typer.Option()] = None,
     memory: Annotated[int, typer.Option()] = None,
-    name: Annotated[str, typer.Option()] = None,
+    ipconfig: Annotated[str, typer.Option()] = None, 
+    cipassword: Annotated[str, typer.Option()] = None, 
+    citype: Annotated[str, typer.Option()] = None, 
+    ciuser: Annotated[str, typer.Option()] = None    
 ):
     p.set_vms(
         vmid=vmid,
@@ -366,7 +369,11 @@ def vms_set(
         cores=cores,
         sockets=sockets,
         cpulimit=cpulimit,
-        memory=memory
+        memory=memory,
+        ipconfig=ipconfig,
+        cipassword=cipassword,
+        ciuser=ciuser,
+        citype=citype
     )
 
 @vms.command("migrate")
@@ -415,9 +422,19 @@ def vms_clone(
     storage: Annotated[str, typer.Option()] = None,
     target: Annotated[str, typer.Option()] = None,
     block: Annotated[bool, typer.Option("--block")] = False,
-    duplicate: Annotated[int, typer.Option("--duplicate")] = None):
+    duplicate: Annotated[int, typer.Option("--duplicate")] = None
+):
     # clone an existing vm
-    data=p.clone_vm(vmid, name, description=description, full=1, storage=storage, target=target, block=block, duplicate=duplicate)
+    data=p.clone_vm(
+        vmid, 
+        name, 
+        description=description, 
+        full=1, 
+        storage=storage, 
+        target=target, 
+        block=block, 
+        duplicate=duplicate
+    )
     p.output(format="internal", data=data)
 
 @vms.command("delete")
