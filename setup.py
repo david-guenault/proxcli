@@ -29,6 +29,7 @@ setup(
         'pytest==7.4.0',
         'PyYAML==6.0.1',
         'requests==2.31.0',
+        'requests-toolbelt==1.0.0',
         'rich==13.4.2',
         'termcolor==2.3.0',
         'tomli==2.0.1',

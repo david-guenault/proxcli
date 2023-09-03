@@ -501,6 +501,21 @@ def inventory_save(path: str, out: Annotated[str, typer.Option()] = "yaml"):
 def inventory_show(out: Annotated[str, typer.Option()] = "yaml"):
     p.inventory(format=out)
 
+### STORAGES ###
+@storages.command("upload")
+def storages_upload(
+    file: Annotated[str, typer.Option()],
+    storage: Annotated[str, typer.Option()],
+    node: Annotated[str, typer.Option()],
+    content: Annotated[str, typer.Option()] = "iso",
+):
+    p.storages_upload(
+        file=file,
+        storage=storage,
+        node=node,
+        content=content
+    )
+
 ### MAIN ###
 
 if __name__ == "__main__":
