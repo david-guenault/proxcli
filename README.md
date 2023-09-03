@@ -90,34 +90,49 @@ Here is an overview of the available commands in proxcli
 
 ```
 proxmox
-    config
-        create --hosts --user --password
-        show
-    inventory
-        save --out --path
-        show --out
-    nodes
-        list --filter --out
-        networks --nodes --types --out [not implemented yet]
-        tasks --nodes 
-        storages
-            list --out --nodes [Not implemented yet]
     cluster
+        ha
+            groups
+                create
+                delete 
+                list
+            resources
+                add 
+                delete
+                list
+                migrate
+                relocate
+        log
+        status
         storages
             list
-        log [not implemented yet]
+            upload
+    config
+        create
+        show
+    inventory
+        save
+        show
+    nodes
+        list
+        networks (not working)
+        tasks
+    replications (not working)
+    tasks (not working)
     vms
-        list --filter --out --nodes --status
-        migrate --target-node  [ --vmid | --filter ]
+        clone
+        delete
+        dump_config
+        list
+        migrate
         nextId
-        reset 
-        start [--filter | --vmid ]
-        stop [--filter | --vmid ]
-        suspend [--filter | --vmid ]
-        reset [--filter | --vmid ]
-        delete [--filter | --vmid ]
-        clone --vmid --source-node --target-node --description --full --name --storage --pool  
+        reset
+        resize
+        set
+        start
+        stop
+        suspend
         tags
-            set --tags --filter
-            list 
+            list
+            set
 ```
