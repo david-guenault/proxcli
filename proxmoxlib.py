@@ -595,7 +595,7 @@ class proxmox():
         self.proxmox_instance.nodes(node).qemu(vmid).resize.put(**{"disk": disk, "size": size})
         
 
-    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory):
+    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory, ipconfig=None, cipassword=None, citype=None, ciuser=None):
         vm = self.get_vm_by_id_or_name(vmid, vmname)
         if not vm:
             raise("Error: no vm match the requested vmid or name")
@@ -610,6 +610,14 @@ class proxmox():
             self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cpulimit": cpulimit})
         if memory:
             self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"memory": memory})
+        if cipassword:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cipassword": cipassword})            
+        if citype:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"citype": citype})            
+        if ciuser:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"ciuser": ciuser})                    
+        if ipconfig:
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"ipconfig0": ipconfig})   
 
 
     def get_vm_public_ip(self,node, vmid, type="ipv4") :
@@ -831,7 +839,7 @@ class proxmox():
                     "description": description,
                     "full": full,
                     "storage": storage,
-                    "target": dst_node
+                    "target": dst_node              
                 })
                 if block:
                     result = self.taskBlock(result)
