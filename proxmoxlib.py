@@ -632,7 +632,7 @@ class proxmox():
         if ipconfig:
             self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"ipconfig0": ipconfig})   
         if boot:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"boot": ipconfig})   
+            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"boot": boot})   
 
 
     def get_vm_public_ip(self,node, vmid, type="ipv4") :
