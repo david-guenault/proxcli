@@ -361,7 +361,8 @@ def vms_set(
     ipconfig: Annotated[str, typer.Option()] = None, 
     cipassword: Annotated[str, typer.Option()] = None, 
     citype: Annotated[str, typer.Option()] = None, 
-    ciuser: Annotated[str, typer.Option()] = None    
+    ciuser: Annotated[str, typer.Option()] = None,
+    sshkey: Annotated[str, typer.Option()] = None,
 ):
     p.set_vms(
         vmid=vmid,
@@ -373,7 +374,8 @@ def vms_set(
         ipconfig=ipconfig,
         cipassword=cipassword,
         ciuser=ciuser,
-        citype=citype
+        citype=citype,
+        sshkey=sshkey
     )
 
 @vms.command("migrate")

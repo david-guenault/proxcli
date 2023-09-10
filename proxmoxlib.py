@@ -18,6 +18,7 @@ import inspect
 import sys
 import requests
 from requests_toolbelt import MultipartEncoder
+import urllib
 
 class proxmox():
     def __init__(self) -> None:
@@ -608,30 +609,34 @@ class proxmox():
         self.proxmox_instance.nodes(node).qemu(vmid).resize.put(**{"disk": disk, "size": size})
         
 
-    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory, ipconfig=None, cipassword=None, citype=None, ciuser=None):
+    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory, ipconfig=None, cipassword=None, citype=None, ciuser=None, sshkey=None):
         vm = self.get_vm_by_id_or_name(vmid, vmname)
         if not vm:
             raise("Error: no vm match the requested vmid or name")
         node = vm["node"]
         vmid = vm["vmid"] if not vmid else vmid
 
-        if cores:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cores": cores})
-        if sockets:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"sockets": sockets})
-        if cpulimit:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cpulimit": cpulimit})
-        if memory:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"memory": memory})
-        if cipassword:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"cipassword": cipassword})            
-        if citype:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"citype": citype})            
-        if ciuser:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"ciuser": ciuser})                    
-        if ipconfig:
-            self.proxmox_instance.nodes(node).qemu(vmid).config.put(**{"ipconfig0": ipconfig})   
+        data = {}
 
+        if cores:
+            data["cores"] = cores 
+        if sockets:
+            data["sockets"] = sockets
+        if cpulimit:
+            data["cpulimit"] = cpulimit
+        if memory:
+            data["memory"] = memory
+        if cipassword:
+            data["cipassword"] = cipassword
+        if citype:
+            data["citype"] = citype
+        if ciuser:
+            data["ciuser"] = ciuser
+        if ipconfig:
+            data["ipconfig"] = ipconfig
+        if sshkey:
+            data["sshkeys"] =  urllib.parse.quote(sshkey.strip(),safe='')
+        self.proxmox_instance.nodes(node).qemu(vmid).config.put(**data)
 
     def get_vm_public_ip(self,node, vmid, type="ipv4") :
         '''
