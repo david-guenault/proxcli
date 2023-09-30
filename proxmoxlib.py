@@ -1,168 +1,51 @@
 #!/usr/bin/env python
-from proxmoxer import ProxmoxAPI
-import urllib3
-from beautifultable import BeautifulTable
-import json
-import re
-import yaml
-import os
-import configparser
-from termcolor import colored
-import requests
-from rich import print as rprint
-urllib3.disable_warnings()
-from proxmoxer.tools import Tasks
+"""proxmoxlib module for managing promox cluster remotely"""
 from datetime import datetime
 import enum
 import inspect
-import sys
+from typing import Any
+from urllib import parse as urllib_parse
+import json
+import re
+import os
+import configparser
+import shutil
+import yaml
 import requests
-from requests_toolbelt import MultipartEncoder
-import urllib
+from beautifultable import BeautifulTable
+import urllib3
+from termcolor import colored
+from rich import print as rprint
+from proxmoxer import ResourceException
+from proxmoxer import ProxmoxAPI
+from proxmoxer.tools import Tasks
+import proxcli_exceptions
 
-class proxmox():
+urllib3.disable_warnings()
+
+
+class Proxmox():
+    """proxmox api helper"""
     def __init__(self) -> None:
         result = self.load_config()
+        self.host = ""
         if result:
-            self.proxmox_instance = self.proxmox()            
+            self.proxmox_instance = self.proxmox()
 
-    # ### ACCESS ###
+    # UTILITY #
 
-    # def list_roles(self, format="table"):
-    #     return self.output(
-    #         data=self.proxmox_instance.access.roles.get(),
-    #         format=format,
-    #         headers=self.headers_access_roles
-    #     )
+    def get_terminal_width(self) -> int:
+        """shortcut to shutil.get_terminal_size()[0]"""
+        return shutil.get_terminal_size()[0]
 
-
-    # def acl_path_list(self):
-    #     return [
-    #         "/", "/access", "/nodes", "/pool", "/sdn", "/storage", "/vms"
-    #     ]
-
-
-
-    # def acl_path_is_valid(self, path):
-    #     for p in self.acl_path_list():
-    #         if p.startswith(path):
-    #             return True
-    #     return False
-
-    # def list_acl(self, format='table'):
-    #     return self.output(
-    #         data=self.proxmox_instance.access.acl.get(),
-    #         headers=self.headers_access_acl,
-    #         format=format
-    #     )
-
-    # def create_acl(
-    #     self, 
-    #     path,
-    #     roles,
-    #     groups,
-    #     propagate,
-    #     tokens,
-    #     users                   
-    # ):
-    #     if not self.acl_path_is_valid(path):
-    #         raise("invalid path")
-        
-    #     self.proxmox_instance.access.acl.put(**{
-    #         path,
-    #         roles,
-    #         groups,
-    #         propagate,
-    #         tokens,
-    #         users                   
-    #     })
-
-    # def list_users(self, format='table', enabled=True, full=True):
-    #     return self.output(
-    #         data=self.proxmox_instance.access.users.get(**{
-    #             'full': 1 
-    #         }),
-    #         headers=self.headers_access_users,
-    #         format=format
-    #     )
-
-    # def create_user(self, 
-    #     name, password="", 
-    #     firstname="", lastname="", 
-    #     comment="", email="", 
-    #     enable=True, expire=0,
-    #     groups="", keys=""
-    # ):
-    #     self.proxmox_instance.access.users.post(**{
-    #         "userid": name, 
-    #         "password": password, 
-    #         "firstname": firstname, 
-    #         "lastname": lastname, 
-    #         "comment": comment, 
-    #         "email": email, 
-    #         "enable": 1 if enable else 0, 
-    #         "expire": expire,
-    #         "groups": groups, 
-    #         "keys": keys
-    #     })
-
-    # def update_user(self, 
-    #     name, 
-    #     firstname="", lastname="", 
-    #     comment="", email="", 
-    #     enable=True, expire=0,
-    #     groups="", keys=""
-    # ):
-    #     self.proxmox_instance.access.users.put(name,**{
-    #         "firstname": firstname, 
-    #         "lastname": lastname, 
-    #         "comment": comment, 
-    #         "email": email, 
-    #         "enable": 1 if enable else 0, 
-    #         "expire": expire,
-    #         "groups": groups, 
-    #         "keys": keys
-    #     })
-
-    # def update_password(self, name, password):
-    #     self.proxmox_instance.access.password.put(**{
-    #         "userid": name, 
-    #         "password":password
-    #     })
-
-    # def delete_user(self, name):
-    #     self.proxmox_instance.access.users(name).delete()
-
-    # def list_groups(self, format='table'):
-    #     return self.output(
-    #         data=self.proxmox_instance.access.groups.get(),
-    #         headers=self.headers_access_groups,
-    #         format=format
-    #     )
-
-    # def create_group(self, name, comment=""):
-    #     self.proxmox_instance.access.groups.post(**{
-    #         'groupid': name,
-    #         'comment': comment
-    # })
-
-    # def update_group(self, name, comment=""):
-    #     self.proxmox_instance.access.groups.put(name, **{
-    #         'comment': comment,
-    #     })
-
-    # def delete_group(self, name):
-    #      self.proxmox_instance.access.groups.delete(name)        
-
-    ### UTILITY ###
-    
-    def get_caller(self):
+    def get_caller(self) -> str:
+        """get the calling method"""
         curframe = inspect.currentframe()
         calframe = inspect.getouterframes(curframe, 2)
         print(calframe)
         return calframe[1][3]
 
-    def load_config(self) -> None:
+    def load_config(self) -> bool:
         """load configuration"""
         configfile = os.path.expanduser('~') + "/.proxmox"
         if os.path.exists(configfile):
@@ -171,120 +54,118 @@ class proxmox():
             self.username = config["credentials"]["user"]
             self.password = config["credentials"]["password"]
             self.hosts = config["credentials"]["hosts"].split(",")
-            self.headers_nodes = config["headers"]["nodes"].split(",")
-            self.headers_qemu = config["headers"]["qemu"].split(",")
-            self.headers_lxc = config["headers"]["lxc"].split(",")
-            self.headers_storage = config["headers"]["storage"].split(",")
-            self.headers_tasks = config["headers"]["tasks"].split(",")
-            self.headers_ha_groups = config["headers"]["ha_groups"].split(",")
-            self.headers_ha_resources = config["headers"]["ha_resources"].split(",")
-            self.headers_cluster_log = config["headers"]["cluster_log"].split(",")
-            self.headers_cluster_status = config["headers"]["cluster_status"].split(",")
-            self.headers_cluster_status_node = config["headers"]["cluster_status_node"].split(",")
-            self.headers_access_groups = config["headers"]["access_groups"].split(",")
-            self.headers_access_users = config["headers"]["access_users"].split(",")
-            self.headers_access_acl = config["headers"]["access_acl"].split(",")
-            self.headers_access_roles = config["headers"]["access_roles"].split(",")
+            headers = config["headers"]
+            self.headers_nodes = headers["nodes"].split(",")
+            self.headers_qemu = headers["qemu"].split(",")
+            self.headers_lxc = headers["lxc"].split(",")
+            self.headers_storage = headers["storage"].split(",")
+            self.headers_tasks = headers["tasks"].split(",")
+            self.headers_ha_groups = headers["ha_groups"].split(",")
+            self.headers_ha_resources = headers["ha_resources"].split(",")
+            self.headers_cluster_log = headers["cluster_log"].split(",")
+            self.headers_cluster_status = headers["cluster_status"].split(",")
+            self.headers_cluster_status_node = headers[
+                "cluster_status_node"
+            ].split(",")
+            self.headers_node_networks = headers["node_networks"].split(",")
             self.table_style = self.get_table_style(config["data"]["style"])
             self.task_polling_interval = config["tasks"]["polling_interval"]
             self.task_timeout = config["tasks"]["timeout"]
-            self.table_colorize = dict([ v.split(':') for v in config["data"]["colorize"].split(",") ])
+            self.table_colorize = dict(
+                [v.split(':') for v in config["data"]["colorize"].split(",")]
+            )
             return True
         else:
             return False
 
     def select_active_node(self) -> None:
         """
-        select the first available node 
+        select the first available node
         iterate over nodes, ping and set self.host property
         """
-
         for host in self.hosts:
-            url = "https://%s:8006" % host
+            values = (host,)
+            url = f"https://{values[0]}:8006"
             try:
-                result = requests.get(url,timeout=1, allow_redirects=True, verify=False)
+                requests.get(
+                    url,
+                    timeout=1,
+                    allow_redirects=True,
+                    verify=False
+                )
                 self.host = host
                 break
-            except Exception as e:
+            finally:
                 pass
-    
+
     def get_table_style(self, style) -> enum.Enum:
         """set beautiful table display style from string"""
-        if style == "STYLE_DEFAULT":
-            return BeautifulTable.STYLE_DEFAULT
-        elif style == "STYLE_NONE":
-            return BeautifulTable.STYLE_NONE
-        elif style == "STYLE_DOTTED":
-            return BeautifulTable.STYLE_DOTTED
-        elif style == "STYLE_SEPARATED":
-            return BeautifulTable.STYLE_SEPARATED
-        elif style == "STYLE_COMPACT":
-            return BeautifulTable.STYLE_COMPACT
-        elif style == "STYLE_MYSQL":
-            return BeautifulTable.STYLE_MYSQL
-        elif style == "STYLE_MARKDOWN":
-            return BeautifulTable.STYLE_MARKDOWN
-        elif style == "STYLE_RST":
-            return BeautifulTable.STYLE_RST
-        elif style == "STYLE_BOX":
-            return BeautifulTable.STYLE_BOX
-        elif style == "STYLE_BOX_DOUBLED":
-            return BeautifulTable.STYLE_BOX_DOUBLED
-        elif style == "STYLE_BOX_ROUNDED":
-            return BeautifulTable.STYLE_BOX_ROUNDED
-        elif style == "STYLE_GRID":
-            return BeautifulTable.STYLE_GRID
-        else: 
-            return BeautifulTable.STYLE_BOX
+        if hasattr(BeautifulTable, style):
+            selected_style = getattr(BeautifulTable, style)
+        else:
+            selected_style = getattr(BeautifulTable, "STYLE_BOX")
+        return selected_style
 
-    def output(self, headers=None, data=[], format="internal", save=False) :
+    def output(
+            self,
+            data,
+            headers=None,
+            output_format="internal",
+            save=False
+    ) -> Any:
         """
-        print data on specified format 
+        print data on specified format
         default to internal (raw data is returned instead of displaying)
         """
-        if format == "json":
-            data = json.dumps(data, indent=2)
-        elif format == "yaml":
-            data = yaml.dump(data)
-        elif format == "table":
-            data = self.table(headers=headers, data=data)            
-        elif format == "internal":
+        # immediately return data if using for internal use
+        if output_format == "internal":
             return data
+
+        if output_format == "json":
+            data = json.dumps(data, indent=2)
+        elif output_format == "yaml":
+            data = yaml.dump(data)
+        elif output_format == "table":
+            data = self.table(headers=headers, data=data)
+
         if save:
-            h = open(save, "w")
-            h.write(data)
-            h.close()
+            with open(file=save, encoding="utf-8", mode="w") as handle:
+                handle.write(str(data))
+                handle.close()
         else:
-            if format == "yaml" or format == "json":
+            if output_format == "yaml" or output_format == "json":
                 rprint(data)
             else:
                 print(data)
 
-    def readable_date(self, timestamp) :
+    def readable_date(self, timestamp) -> str:
         """convert unix timestamp to human readable date time"""
-        return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')        
+        return datetime.utcfromtimestamp(
+            timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
-    def table(self, headers, data, width=180) :
+    def table(self, headers, data, width=None) -> BeautifulTable:
         """
         Display list of dict as table
         """
+        width = self.get_terminal_width() if not width else width
         table = BeautifulTable(maxwidth=width)
         table.set_style(self.table_style)
         table.columns.header = headers
         for element in data:
             datarow = []
             for header in headers:
-                try:
+                if header in element:
                     datarow.append(element[header])
-                except:
-                    datarow.append("")
+                else:
+                    datarow.append('')
             new_data_row = []
             for cell in datarow:
                 if len(str(cell)) > 0:
                     words = list(self.table_colorize.keys())
                     match = [word for word in words if word in str(cell)]
                     if len(match) == 1:
-                        new_data_row.append(colored(cell, self.table_colorize[match[0]]))
+                        new_data_row.append(
+                            colored(cell, self.table_colorize[match[0]]))
                     else:
                         new_data_row.append(cell)
                 else:
@@ -292,26 +173,39 @@ class proxmox():
             table.rows.append(tuple(new_data_row))
         return table
 
-    def ismatching(self, regex, data) :
+    def ismatching(self, regex, data) -> bool:
         """shortcut method used to check is a string match a regex"""
         if not re.match(regex, data):
             return False
         else:
             return True
 
-    def taskBlock(self, task) :
-        '''
+    def task_block(self, task) -> Any:
+        """
         Poll a task until the task is finished or timed out
             Paramaters:
-                task (str): a task identifier (UPID:<node_name>:<pid_in_hex>:<pstart_in_hex>:<starttime_in_hex>:<type>:<id (optional)>:<user>@<realm>:)
+                task (str): a task identifier
+                UPID:<n>:<ph>:<ps>:<st>:<t>:<id>:<u>@<r>:)
+                n: node name
+                ph: pid in hex format
+                ps: pstart in hex
+                st: start tim in hex
+                t: type
+                id: id (optional)
+                u: user
+                r: realm
             Returns:
-                result (dict); a dict with all the task information (see https://proxmoxer.github.io/docs/2.0/tools/tasks/#blocking_status)
-        '''
-        print("Waiting for task %s to finish" % task)
-        result = Tasks.blocking_status(prox=self.proxmox_instance, task_id=task, timeout=int(self.task_timeout), polling_interval=float(self.task_polling_interval))        
+                result (dict): a dict with all the task information
+                https://proxmoxer.github.io/docs/2.0/tools/tasks/#blocking_status
+        """
+        print(f"Waiting for task {(task,)} to finish")
+        return Tasks.blocking_status(
+            prox=self.proxmox_instance,
+            task_id=task,
+            timeout=int(self.task_timeout),
+            polling_interval=float(self.task_polling_interval))
 
-
-    def proxmox(self) :
+    def proxmox(self) -> ProxmoxAPI:
         """create proxmox api instance from the first available node found"""
         self.select_active_node()
         return ProxmoxAPI(
@@ -321,31 +215,55 @@ class proxmox():
             verify_ssl=False
         )
 
-    ### STORAGE ###
+    # STORAGE #
     def storages_upload(
         self,
         file,
         node,
         storage,
         content
-    ):
-        f = open(file,'rb')
-        self.proxmox_instance.nodes(node).storage(storage).upload.post(content=content, filename=f)
+    ) -> None:
+        """upload image or iso file to proxmox node"""
+        with open(str(file), 'rb') as file_handler:
+            storage = self.proxmox_instance.nodes(node).storage(storage)
+            storage.upload.post(content=content, filename=file_handler)
 
-    ### CLUSTER ###
+    # CLUSTER #
 
+    def get_cluster_status(self, output_format="internal") -> None:
+        """Description of the function/method.
 
-    def get_cluster_status(self, format="internal"):
+        Parameters:
+            <param>: Description of the parameter
+
+        Returns:
+            <variable>: Description of the return value
+        """
+        status = []
         status = self.proxmox_instance.cluster.status.get()
-        cluster_status = [c for c in status if c["type"] == "cluster"]
-        cluster_status_node = [c for c in status if c["type"] == "node"]
+        if isinstance(status, list):
+            cluster_status = [
+                c for c in status if c["type"] == "cluster"]
+            cluster_status_node = [
+                c for c in status if c["type"] == "node"]
 
-        self.output(format=format, headers=self.headers_cluster_status, data=cluster_status)
-        self.output(format=format, headers=self.headers_cluster_status_node, data=cluster_status_node)
+            self.output(
+                output_format=output_format,
+                headers=self.headers_cluster_status,
+                data=cluster_status
+            )
+            self.output(
+                output_format=output_format,
+                headers=self.headers_cluster_status_node,
+                data=cluster_status_node)
 
-
-
-    def get_cluster_log(self, nodes, severities, format="internal", max=100):
+    def get_cluster_log(
+            self,
+            nodes,
+            severities,
+            output_format="internal",
+            max_items=100
+    ) -> Any:
         """get cluster logs
 
         Args:
@@ -354,16 +272,18 @@ class proxmox():
         """
 
         translate_severity = {
-            '0': "panic",    
-            '1': "alert",    
-            '2': "critical", 
-            '3': "error",    
-            '4': "warning",  
-            '5': "notice",   
-            '6': "info",     
+            '0': "panic",
+            '1': "alert",
+            '2': "critical",
+            '3': "error",
+            '4': "warning",
+            '5': "notice",
+            '6': "info",
             '7': "debug"
         }
-        logs = self.proxmox_instance.cluster.log.get(**{'max': max})
+        logs = self.proxmox_instance.cluster.log.get(**{'max': max_items})
+        if not logs:
+            logs = []
         nodes = [n.strip() for n in nodes.split(",")]
         severities = [s.strip() for s in severities.split(",")]
         filtered_logs = []
@@ -376,32 +296,46 @@ class proxmox():
                 else:
                     if log["node"] in nodes:
                         filtered_logs.append(log)
-        return self.output(headers=self.headers_cluster_log, data=filtered_logs, format=format)
 
+        if len(filtered_logs) == 0:
+            return
 
-    def get_ha_groups(self, format="internal"):
+        return self.output(
+            headers=self.headers_cluster_log,
+            data=filtered_logs,
+            output_format=output_format
+        )
+
+    def get_ha_groups(self, output_format="internal") -> Any:
         """list cluster ha groups"""
         hagroups = self.proxmox_instance.cluster.ha.groups.get()
-        print(hagroups)
-        return self.output(headers=self.headers_ha_groups, data=hagroups, format=format)
+        return self.output(
+            headers=self.headers_ha_groups,
+            data=hagroups,
+            output_format=output_format
+        )
 
-
-    def create_ha_group(self, group, nodes, nofailback=False, restricted=False):
-        '''
+    def create_ha_group(
+            self,
+            group,
+            nodes,
+            nofailback=False,
+            restricted=False
+    ) -> None:
+        """
             create a hagroup
             Parameters:
                 group (str): the ha group name
-                nodes (str): <node>[:<pri>]{,<node>[:<pri>]}*
-                                List of cluster node members, where a priority can be given to each node. A resource bound to a group will run on the available nodes with the highest priority. If there are more nodes in the highest priority class, the services will get distributed to those nodes. The priorities have a relative meaning only.
+                nodes (str): List of cluster node members
                 nofailback (bool):
                 restricted (bool):
-                tyep (enum):
+                type (enum):
             Returns:
                 result (bool): true if success, false if failure
-        '''
+        """
 
-        nofailback = 0 if nofailback == False else 1
-        restricted = 0 if restricted == False else 1
+        nofailback = 0 if nofailback is False else 1
+        restricted = 0 if restricted is False else 1
         self.proxmox_instance.cluster.ha.groups.post(**{
             "group": group,
             "nodes": nodes,
@@ -409,40 +343,64 @@ class proxmox():
             "restricted": restricted
         })
 
-
-    def delete_ha_group(self, group):
+    def delete_ha_group(self, group) -> None:
         """delete cluster ha group
 
         Args:
             group (str): cluster ha group name to delete
         """
         self.proxmox_instance.cluster.ha.groups.delete(group)
-        return True
 
-
-    def get_ha_resources(self):
+    def get_ha_resources(self) -> None:
         """retrieve a list of cluster ha resources with named cluster ha groups
 
         Returns:
             list: list of ha resources
         """
-        vms = self.get_vms(format="internal")
+        vms = self.get_vms(output_format="internal")
+        if not vms:
+            return
         resources = self.proxmox_instance.cluster.ha.resources.get()
+        if not resources:
+            resources = []
         for resource in resources:
             vmid = resource["sid"].split(":")[-1]
-            vm = [v for v in vms if int(v["vmid"]) == int(vmid)][0]
+            virtual_machine = [
+                v for v in vms if int(v["vmid"]) == int(vmid)][0]
             resource["vmid"] = vmid
-            resource["name"] = vm["name"]
-        return self.output(headers=self.headers_ha_resources, data=resources, format="table")
+            resource["name"] = virtual_machine["name"]
+        return self.output(
+            headers=self.headers_ha_resources,
+            data=resources,
+            output_format="table"
+        )
 
-
-    def add_ha_resources(self, group, filter=None, vmid=None, comment="", max_relocate=1, max_restart=1, state="started"):
-        if filter:
-            vms = self.get_vms(format="internal", filter=filter)
-            for vm in vms:
-                print("Adding resource %s to group %s" % (vm["vmid"], group))
+    def create_ha_resource(
+            self,
+            group,
+            name=None,
+            vmid=None,
+            comment="",
+            max_relocate=1,
+            max_restart=1,
+            state="started"
+    ) -> None:
+        """add a resource to ha group"""
+        if name:
+            vms = self.get_vms(
+                output_format="internal",
+                filter_name=name
+            )
+            vms = [] if not vms else vms
+            for virtual_machine in vms:
+                print(
+                    (
+                        f"Adding resource {(virtual_machine['vmid'],)} "
+                        f"to group {(group,)}"
+                    )
+                )
                 self.proxmox_instance.cluster.ha.resources.post(**{
-                    'sid': vm["vmid"],
+                    'sid': virtual_machine["vmid"],
                     'comment': comment,
                     'group': group,
                     'max_relocate': max_relocate,
@@ -450,9 +408,9 @@ class proxmox():
                     'state': state
                 })
         if vmid:
-            print("Adding resource %s to group %s" % (vmid, group))
+            print(f"Adding resource {(vmid,)} to group {(group,)}")
             self.proxmox_instance.cluster.ha.resources.post(**{
-                'sid': vmid,
+                'sid': str(vmid),
                 'comment': comment,
                 'group': group,
                 'max_relocate': max_relocate,
@@ -460,64 +418,115 @@ class proxmox():
                 'state': state
             })
 
+    def delete_ha_resources(self, filter_name=None, vmid=None) -> None:
+        """delete resource from ha group"""
+        if filter_name:
+            vms = self.get_vms(
+                output_format="internal",
+                filter_name=filter_name
+            )
+            vms = [] if not vms else vms
+            for virtual_machine in vms:
+                print(f"Removing resource {(virtual_machine['vmid'],)}")
+                ha_endpoint = self.proxmox_instance.cluster.ha
+                ha_endpoint.resources.delete(virtual_machine["vmid"])
 
-    def delete_ha_resources(self, filter=None, vmid=None):
-        if filter:
-            vms = self.get_vms(format="internal", filter=filter)
-            for vm in vms:
-                print("Removing resource %s" % (vm["vmid"]))
-                self.proxmox_instance.cluster.ha.resources.delete(vm["vmid"])
-        
         if vmid:
-            print("Removing resource %s" % (vmid))            
-            self.proxmox_instance.cluster.ha.resources.delete(vmid)            
+            print(f"Removing resource {(vmid,)}")
+            self.proxmox_instance.cluster.ha.resources.delete(vmid)
 
+    def migrate_ha_resources(self, node, filter_name=None, vmid=None) -> None:
+        """migrate a resource from ha group"""
+        if filter_name:
+            vms = self.get_vms(
+                output_format="internal",
+                filter_name=filter_name
+            )
+            vms = [] if not vms else vms
+            for virtual_machine in vms:
+                print(
+                    (
+                        f"migrating resource {(virtual_machine['vmid'],)} "
+                        f"to node {(node,)}"
+                    )
+                )
+                ha_group = self.proxmox_instance.cluster.ha
+                ha_group.resources(virtual_machine["vmid"]).migrate.post(
+                    **{'node': node})
 
-    def migrate_ha_resources(self, node, filter=None, vmid=None):
-        if filter:
-            vms = self.get_vms(format="internal", filter=filter)
-            for vm in vms:
-                print("migrating resource %s to node %s" % (vm["vmid"], node))
-                self.proxmox_instance.cluster.ha.resources(vm["vmid"]).migrate.post(**{'node': node})
-        
         if vmid:
-            print("migrating resource %s to node %s" % (vmid, node))
-            self.proxmox_instance.cluster.ha.resources(vmid).migrate.post(**{'node': node})            
+            print(
+                (
+                    f"migrating resource {(vmid,)}"
+                    f"to node {(node,)}"
+                )
+            )
+            ha_resource = self.proxmox_instance.cluster.ha.resources(vmid)
+            ha_resource.migrate.post(**{'node': node})
 
+    def relocate_ha_resources(
+            self,
+            proxmox_node,
+            filter_name=None,
+            vmid=None
+    ) -> None:
+        """relocate ha resource"""
+        ha_cluster = self.proxmox_instance.cluster.ha
+        if filter_name:
+            vms = self.get_vms(
+                output_format="internal",
+                filter_name=filter_name
+            )
+            vms = [] if not vms else vms
+            for virtual_machine in vms:
+                print(
+                    (
+                        f"migrating resource {(virtual_machine['vmid'],)}"
+                        f"to node {(proxmox_node,)}"
+                    )
+                )
+                ha_cluster.resources(virtual_machine["vmid"]).relocate.post(
+                    **{'node': proxmox_node})
 
-    def relocate_ha_resources(self, node, filter=None, vmid=None):
-        if filter:
-            vms = self.get_vms(format="internal", filter=filter)
-            for vm in vms:
-                print("migrating resource %s to node %s" % (vm["vmid"], node))
-                self.proxmox_instance.cluster.ha.resources(vm["vmid"]).relocate.post(**{'node': node})
-        
         if vmid:
-            print("migrating resource %s to node %s" % (vmid, node))
-            self.proxmox_instance.cluster.ha.resources(vmid).relocate.post(**{'node': node})            
+            print(
+                (
+                    f"migrating resource {(vmid,)}"
+                    f"to node {(proxmox_node,)}"
+                )
+            )
+            ha_cluster.ha.resources(vmid).relocate.post(
+                **{'node': proxmox_node})
 
-
-
-    def get_storages(self,format="json") :
+    def get_storages(self, output_format="json") -> Any:
         """list storages"""
-        nodes = self.get_nodes(format="internal")
-        available_nodes = [n for n in nodes if n["status"] == "online"]
-        if len(available_nodes) > 0:
-            query_node = available_nodes[0]
-        else:
-            raise Exception("No nodes available")
-        
+        # nodes = self.get_nodes(format="internal")
+        # nodes = [] if not nodes else nodes
+        # available_nodes = [n for n in nodes if n["status"] == "online"]
+        # if len(available_nodes) > 0:
+        #     query_node = available_nodes[0]
+        # else:
+        #     raise ProxmoxClusterDownException
+
         all_storages = []
-        
+
         storages = self.proxmox_instance.storage.get()
+        storages = [] if not storages else storages
         for storage in storages:
             all_storages.append(storage)
-        return self.output(headers=self.headers_storage, data=all_storages, format=format)            
+        return self.output(
+            headers=self.headers_storage,
+            data=all_storages,
+            output_format=output_format
+        )
 
-    ### NODES ###
+    # NODES #
 
-
-    def get_nodes(self, format="internal", filter=None) :
+    def get_nodes(
+            self,
+            output_format="internal",
+            filter_name=None
+    ) -> Any:
         '''
         Get all node as a list
 
@@ -527,121 +536,178 @@ class proxmox():
                 TODO
 
         '''
-        nodes = self.proxmox_instance.nodes.get()
-        if filter:
-            nodes = [n for n in nodes if self.ismatching(filter, n["node"])]
-        return self.output(headers=self.headers_nodes, data=nodes, format=format)
+        proxmox_nodes = self.proxmox_instance.nodes.get()
+        proxmox_nodes = [] if not proxmox_nodes else proxmox_nodes
+        if filter_name:
+            proxmox_nodes = [
+                n for n in list(proxmox_nodes) if self.ismatching(
+                    filter_name, n["node"]
+                )
+            ]
 
+        return self.output(
+            headers=self.headers_nodes,
+            data=proxmox_nodes,
+            output_format=output_format
+        )
 
-    def get_tasks(self, format="internal", errors=0,limit=50,source="all",vmid=None,nodes=None) :
-        available_nodes = self.get_nodes(format="internal")
-        available_nodes = [n["node"] for n in available_nodes if n["status"] == "online"]
-        if not nodes:
-            nodes = available_nodes
+    def get_tasks(
+            self,
+            output_format="internal",
+            errors=0,
+            limit=50,
+            source="all",
+            proxmox_nodes=None
+    ) -> Any:
+        """get tasks from nodes"""
+        available_nodes = self.get_nodes(output_format="internal")
+        available_nodes = [
+            n["node"] for n in available_nodes if n["status"] == "online"]
+        if not proxmox_nodes:
+            proxmox_nodes = available_nodes
         else:
-            nodes = nodes.split(",")
-            nodes = [n for n in nodes if n in available_nodes]
+            proxmox_nodes = proxmox_nodes.split(",")
+            proxmox_nodes = [n for n in proxmox_nodes if n in available_nodes]
 
         tasks = []
-        for node in nodes:
-            t = self.proxmox_instance.nodes(node).tasks.get(**{
+        for node in proxmox_nodes:
+            node_tasks = self.proxmox_instance.nodes(node).tasks.get(**{
                 "errors": errors,
                 "limit": limit,
                 "source": source,
                 "vmid": None
             })
-            tasks += t
-        tasks = [t for t in tasks if t["node"] in nodes]
-        tasks = sorted(tasks, key=lambda d: d['starttime'],reverse=True)
-        for t in tasks:
-            t['starttime'] = self.readable_date(t['starttime'])
-            t['endtime'] = self.readable_date(t['endtime'])
-        self.output(headers=self.headers_tasks, data=tasks, format=format)
+            node_tasks = [] if not node_tasks else node_tasks
+            tasks += node_tasks
+        tasks = [t for t in tasks if t["node"] in proxmox_nodes]
+        tasks = sorted(tasks, key=lambda d: d['starttime'], reverse=True)
+        for node_tasks in tasks:
+            node_tasks['starttime'] = self.readable_date(
+                node_tasks['starttime'])
+            if 'endtime' in node_tasks:
+                node_tasks['endtime'] = self.readable_date(
+                    node_tasks['endtime'])
+            else:
+                node_tasks['endtime'] = ""
+        self.output(
+            headers=self.headers_tasks,
+            data=tasks,
+            output_format=output_format
+        )
 
-
-    def get_nodes_network(self, nodes=None, type="bridge,bond,eth,alias,vlan,OVSBridge,OVSBond,OVSPort,OVSIntPort,any_bridge,any_local_bridge", format="internal") :
-
-        if not nodes or not types: 
+    def get_nodes_network(
+            self,
+            nodes=None,
+            output_format="table"
+    ) -> Any:
+        """get the default ip address from a node"""
+        if not nodes:
             return []
-        else:
-            nodes = nodes.split(",")
-            types = types.split(",")
+        nodes = nodes.split(",")
         networks = []
         for node in nodes:
-            result = self.proxmox_instance.node(node).network.get()
+            result = self.proxmox_instance.nodes(node).network.get()
+            result = [] if not result else result
             for net in result:
                 net["node"] = node
                 networks.append(net)
-        self.output(headears=None, data=networks)
+        self.output(
+            data=networks,
+            output_format=output_format,
+            headers=self.headers_node_networks
+        )
 
+    # VMS #
 
-    ### VMS ###
-
-    def get_vm_by_id_or_name(self, vmid=None, vmname=None):
-        vms = self.get_vms(format="internal")
-        vm = None
+    def get_vm_by_id_or_name(self, vmid=None, vmname=None) -> Any:
+        """get vm by its id or name"""
+        vms = self.get_vms(output_format="internal")
+        vms = [] if not vms else vms
+        virtual_machine = None
         if vmid:
-            vm = [v for v in vms if v["vmid"] == int(vmid)]
+            virtual_machine = [v for v in vms if v["vmid"] == int(vmid)]
         else:
-            vm = [v for v in vms if v["name"] == vmname]
-        if len(vm) == 0:
+            virtual_machine = [v for v in vms if v["name"] == vmname]
+        if len(virtual_machine) == 0:
             return False
-        return vm[0]
+        return virtual_machine[0]
 
-    def vms_config_get(self, vmid):
-        vm = self.get_vm_by_id_or_name(vmid=vmid)
-        node = vm["node"]
-        vmid = vm["vmid"] if not vmid else vmid
-        config = self.proxmox_instance.get("nodes/%s/qemu/%s/config" % (node,vmid))
+    def get_vms_config(self, vmid) -> Any:
+        """get virtual machine config"""
+        virtual_machine = self.get_vm_by_id_or_name(vmid=vmid)
+        virtual_machine = {} if not virtual_machine else virtual_machine
+        node = virtual_machine["node"]
+        vmid = virtual_machine["vmid"]
+        config = self.proxmox_instance.get(
+            f"nodes/{node}/qemu/{vmid}/config"
+        )
         return config
 
-    def vms_resize_disk(self, size, vmid=None, vmname=None,disk=None):
-        vm = self.get_vm_by_id_or_name(vmid, vmname)
-        if not vm:
-            raise("Error: no vm match the requested vmid or name")
-        node = vm["node"]
-        vmid = vm["vmid"] if not vmid else vmid
-        config = self.vms_config_get(vmid)
+    def resize_vms_disk(self, size, vmid=None, vmname=None, disk=None) -> None:
+        """resize the first virtual machine disk"""
+        virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
+        if not virtual_machine:
+            raise proxcli_exceptions.ProxmoxVmNotFoundException
+        node = virtual_machine["node"]
+        vmid = virtual_machine["vmid"] if not vmid else vmid
+        config = self.get_vms_config(vmid)
+        if not config:
+            raise proxcli_exceptions.ProxmoxVmConfigGetException
         if not disk:
             # if disk is not specified resize the default boot disk
             boot = config["boot"].split(";")
             disk = [v for v in boot if "order" in v][0].split("=")[1]
-        self.proxmox_instance.nodes(node).qemu(vmid).resize.put(**{"disk": disk, "size": size})
-        
+        self.proxmox_instance.nodes(node).qemu(vmid).resize.put(
+            **{"disk": disk, "size": size}
+        )
 
-    def set_vms(self, vmid, vmname, cores, sockets, cpulimit, memory, ipconfig=None, cipassword=None, citype=None, ciuser=None, boot=None, sshkey=None):
-        vm = self.get_vm_by_id_or_name(vmid, vmname)
-        if not vm:
-            raise("Error: no vm match the requested vmid or name")
-        node = vm["node"]
-        vmid = vm["vmid"] if not vmid else vmid
+    def set_vms(
+                self,
+                vmid,
+                vmname,
+                cores,
+                sockets,
+                cpulimit,
+                memory,
+                ipconfig=None,
+                cipassword=None,
+                citype=None,
+                ciuser=None,
+                boot=None,
+                sshkey=None
+    ) -> None:
+        """set vm config parameters"""
+        virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
+        if not virtual_machine:
+            raise proxcli_exceptions.ProxmoxVmNotFoundException
+        node = virtual_machine["node"]
+        vmid = virtual_machine["vmid"] if not vmid else vmid
 
         data = {}
 
-        if cores:
-            data["cores"] = cores 
-        if sockets:
+        if cores and cores > 0:
+            data["cores"] = cores
+        if sockets and sockets > 0:
             data["sockets"] = sockets
-        if cpulimit:
+        if cpulimit and cpulimit > 0:
             data["cpulimit"] = cpulimit
-        if memory:
+        if memory and memory > 0:
             data["memory"] = memory
-        if cipassword:
+        if cipassword and len(cipassword) > 0:
             data["cipassword"] = cipassword
-        if citype:
+        if citype and len(citype) > 0:
             data["citype"] = citype
-        if ciuser:
+        if ciuser and len(ciuser) > 0:
             data["ciuser"] = ciuser
-        if ipconfig:
+        if ipconfig and len(ipconfig) > 0:
             data["ipconfig0"] = ipconfig
-        if boot:
+        if boot and len(boot) > 0:
             data["boot"] = boot
-        if sshkey:
-            data["sshkeys"] =  urllib.parse.quote(sshkey.strip(),safe='')
-        self.proxmox_instance.nodes(node).qemu(vmid).config.put(**data)        
+        if sshkey and len(sshkey) > 0:
+            data["sshkeys"] = urllib_parse.quote(sshkey.strip(), safe='')
+        self.proxmox_instance.nodes(node).qemu(vmid).config.put(**data)
 
-
-    def get_vm_public_ip(self,node, vmid, type="ipv4") :
+    def get_vm_public_ip(self, node, vmid, net_type="ipv4") -> Any:
         '''
         retrieve vm public ip only work with qemu vms
 
@@ -650,209 +716,270 @@ class proxmox():
             Returns:
                 TODO
         '''
+        interfaces = None
         try:
-            interfaces = self.proxmox_instance.nodes(node).qemu(vmid).agent.get("network-get-interfaces")
+            agent = self.proxmox_instance.nodes(node).qemu(vmid).agent
+            interfaces = agent.get("network-get-interfaces")
+        except ResourceException:
+            pass
+
+        vm_ip = None
+        if interfaces:
             for interface in interfaces["result"]:
                 if interface["name"] == "lo":
                     pass
                 else:
                     for ipaddress in interface["ip-addresses"]:
-                        if ipaddress["ip-address-type"] != type:
+                        if ipaddress["ip-address-type"] != net_type:
                             pass
                         else:
-                            ip = ipaddress["ip-address"]
+                            vm_ip = ipaddress["ip-address"]
                             break
-        except Exception as e:
-            ip = None
-        return ip
+        else:
+            vm_ip = "Agent not running"
+        return vm_ip
 
-
-    def get_vms(self, format="json", filter=None, nodes=None, status="stopped,running") :
+    def get_vms(
+            self,
+            output_format="json",
+            filter_name=None,
+            nodes=None,
+            status="stopped,running"
+    ) -> Any:
         '''
         retrieve a list of qemu vms and print on stdout in the specified format
 
-            Parameters: 
+            Parameters:
                 format  (str): output format (table, yaml, json, internal).
                 filter  (str): regex applied on vm name to filter result
-                nodes   (str): coma separated list of nodes from which to retrieve vms lisst
-                status  (str): coma separated list of vms status 
+                nodes   (str): coma separated list of nodes from which to
+                               retrieve vms lisst
+                status  (str): coma separated list of vms status
             Returns:
                 list of vms in the specified format
         '''
         all_nodes = self.get_nodes()
         updated_vms = []
-        
-        if not nodes:
+
+        if not nodes and all_nodes:
             all_nodes = [n for n in all_nodes if n["status"] == "online"]
         else:
-            nodes = nodes.split(",")
-            all_nodes = [n for n in all_nodes if n["status"] == "online" and n["node"] in nodes]
+            nodes = str(nodes).split(",")
+            all_nodes = [] if not all_nodes else all_nodes
+            all_nodes = [n for n in all_nodes if
+                         n["status"] == "online" and n["node"] in nodes]
         nodes = all_nodes
 
         status = status.split(",")
 
         for node in nodes:
             vms = self.proxmox_instance.nodes(node["node"]).qemu.get()
-            for vm in vms:
-                    # add on which node the vm is running
-                    vm["node"] = node["node"]
-                    # add ip address if found
-                    vm["ip"] = self.get_vm_public_ip(node=vm["node"], vmid=vm["vmid"])
-                    # if tags are empty create an empty key:value pair
-                    if "tags" not in vm.keys():
-                        vm["tags"] = ""
-                    # filter on status
-                    if vm["status"] in status:
-                        # apply filter on vms 
-                        if filter and self.ismatching(filter, vm["name"]):
-                            updated_vms.append(vm)
-                        elif not filter:
-                            updated_vms.append(vm)
-        return self.output(headers=self.headers_qemu, data=updated_vms, format=format)            
+            vms = [] if not vms else vms
+            for virtual_machine in vms:
+                # add on which node the vm is running
+                virtual_machine["node"] = node["node"]
+                # add ip address if found
+                if (
+                    "status" in virtual_machine and
+                    virtual_machine["status"] == "running"
+                ):
+                    virtual_machine["ip"] = self.get_vm_public_ip(
+                        node=virtual_machine["node"],
+                        vmid=virtual_machine["vmid"]
+                    )
+                else:
+                    virtual_machine["ip"] = "N/A"
+                # if tags are empty create an empty key:value pair
+                if "tags" not in virtual_machine.keys():
+                    virtual_machine["tags"] = ""
+                # filter on status
+                if virtual_machine["status"] in status:
+                    # apply filter on vms
+                    if filter_name and self.ismatching(
+                        filter_name,
+                        virtual_machine["name"]
+                    ):
+                        updated_vms.append(virtual_machine)
+                    elif not filter_name:
+                        updated_vms.append(virtual_machine)
+        return self.output(
+            headers=self.headers_qemu,
+            data=updated_vms,
+            output_format=output_format
+        )
 
-
-    def migrate_vms(self, target_node, filter=None, vmid=None) :
-        if filter and vmid:
-            raise Exception("filter and vmid arguments are mutualy exclusive")
-        vms = self.get_vms(format="internal")                
+    def migrate_vms(self, target_node, filter_name=None, vmid=None) -> None:
+        """migrate vm from a node to another one"""
+        if filter_name and vmid:
+            raise proxcli_exceptions.VmIdMutualyExclusiveException
+        vms = self.get_vms(output_format="internal")
+        vms = [] if not vms else vms
         if vmid:
             vms = [v for v in vms if int(v["vmid"]) == int(vmid)]
             if len(vms) != 1:
-                raise Exception("vm %s could not be found on any node")
+                raise proxcli_exceptions.ProxmoxVmNotFoundException
             else:
-                vm = vms[0]
-            try:
-                self.proxmox_instance.nodes(vm["node"]).qemu(vmid).migrate.post(**{'node':vm["node"],'target':target_node,'vmid':vmid})
-            except Exception as e:
-                print(e)
-            rprint("Migration vm %s from %s to %s " % (vm["name"], vm["node"], target_node))
+                virtual_machine = vms[0]
+            node = self.proxmox_instance.nodes(virtual_machine["node"])
+            node.qemu(vmid).migrate.post(
+                **{
+                    'node': virtual_machine["node"],
+                    'target': target_node,
+                    'vmid': vmid
+                }
+            )
         else:
-            
-            for vm in vms:
-                if self.ismatching(filter, vm["name"]):
-                    # this vm match filter 
+            for virtual_machine in vms:
+                if self.ismatching(filter_name, virtual_machine["name"]):
+                    # this vm match filter
                     # first get current node
-                    source_node = vm["node"]
-                    # now try to migrate 
-                    self.proxmox_instance.nodes(source_node).qemu(vm["vmid"]).migrate.post(**{'node':source_node,'target':target_node,'vmid':vm["vmid"]})
-                    rprint("Migration vm %s from %s to %s " % (vm["name"], source_node, target_node))
+                    source_node = virtual_machine["node"]
+                    # now try to migrate
+                    node = self.proxmox_instance.nodes(source_node)
+                    node.qemu(virtual_machine["vmid"]).migrate.post(
+                        **{
+                            'node': source_node,
+                            'target': target_node,
+                            'vmid': virtual_machine["vmid"]
+                        }
+                    )
+                    rprint(
+                        (
+                            f"Migration vm {virtual_machine['name']}"
+                            f"from {source_node}"
+                            f"to {target_node}"
+                        )
+                    )
 
+    def set_tags(self, tags="", filter_name=None) -> None:
+        """set virtual machine tags"""
+        vms = self.get_vms(output_format="json", filter_name=filter_name)
+        vms = [] if not vms else vms
+        for virtual_machine in vms:
+            node = self.proxmox_instance.nodes(virtual_machine["node"])
+            node.qemu(virtual_machine["vmid"]).config.put(**{'tags': tags})
 
-    def set_tags(self, tags="", filter=None) :
-        vms = self.get_vms(format="json", filter=filter)
-        for vm in vms:
-            self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).config.put(**{'tags': tags})
-
-    def list_tags(self) :
+    def get_tags(self) -> None:
+        """list virtual machine tags"""
         # get a list of all tags present in all vms
-        vms = self.get_vms(format="internal")
+        vms = self.get_vms(output_format="internal")
+        vms = [] if not vms else vms
         extract = [v["tags"] for v in vms if len(v["tags"]) > 0]
         tags = [element.replace(";", ",").split(",") for element in extract]
         tags = list(set([item for sublist in tags for item in sublist]))
         print(", ".join(tags))
 
-
-    def delete_vms(self, filter=None, vmid=None, block=True) :
+    def delete_vms(self, fitler_name=None, vmid=None, block=True) -> None:
         '''
         delete vms matching specified regex applied on vm names
         only stoped vms are removed
         filter and vmid are mutualy exclusive
             Parameters:
-                filter (string): regex filter applied on vms names (only the matching vms will be deleted)
+                filter (string): regex filter applied on vms names
+                                 (only the matching vms will be deleted)
                 vmid (int): vm id to delete
-                block (bool): if True will wait for each deletion to end. 
+                block (bool): if True will wait for each deletion to end.
             Returns
                 True if success
         '''
-        vms = self.get_vms(format="internal", filter=filter)
+        vms = self.get_vms(output_format="internal", filter_name=fitler_name)
+        vms = [] if not vms else vms
         if vmid:
-            if not vmid in [ v["vmid"] for v in vms ]:
-                raise Exception("specified vmid not found on any available nodes")
-            vm = [v for v in vms if vmid == v["vmid"]][0]
-            if vm["status"] != "stopped":
-                raise Exception("vm %s (%s) must be stopped before deletion" % (vm["name"], vmid))
-            result = self.proxmox_instance.nodes(vm["node"]).qemu(vmid).delete()
+            if vmid not in [v["vmid"] for v in vms]:
+                raise proxcli_exceptions.ProxmoxVmNotFoundException
+            virtual_machine = [v for v in vms if vmid == v["vmid"]][0]
+            if virtual_machine["status"] != "stopped":
+                raise proxcli_exceptions.ProxmoxVmNeedStopException
+            node = self.proxmox_instance.nodes(virtual_machine["node"])
+            delete_job_id = node.qemu(vmid).delete()
             if block:
-                result = self.taskBlock(result)           
-                self.output(data=result, format="internal")                
+                self.task_block(delete_job_id)
         else:
             results = []
             if len(vms) == 0:
-                raise Exception("No vms found matching filter %s" % filter)
-            for vm in vms:
-                if vm["status"] == "stopped":
-                    results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).delete())
-
+                raise proxcli_exceptions.ProxmoxVmNotFoundException
+            for virtual_machine in vms:
+                if virtual_machine["status"] == "stopped":
+                    node = self.proxmox_instance.nodes(virtual_machine["node"])
+                    results.append(
+                        node.qemu(virtual_machine["vmid"]).delete())
             for result in results:
                 if block:
-                    print("Wait for deletion task %s to finish" % result)
-                    self.taskBlock(result)
+                    print(
+                        f"Wait for deletion task {result} to finish"
+                    )
+                    self.task_block(result)
                 else:
-                    print("Deletion task started %s" % result)
-        return True
+                    print(f"Deletion task started {result}]")
 
-
-    def status_vms(self,status=None, filter=None, vmid=None) :
+    def set_vms_status(self, status=None, filter_name=None, vmid=None) -> Any:
         """set status of vms matching filter or vmid"""
-        vms = self.get_vms(format="internal", filter=filter)
-        if not vms: 
+        vms = self.get_vms(output_format="internal", filter_name=filter_name)
+        if not vms:
             return False
         results = []
         if not vmid:
-            for vm in vms:
-                results.append(self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).status.post(status))
+            for virtual_machine in vms:
+                node = self.proxmox_instance.nodes(virtual_machine["node"])
+                results.append(
+                    node.qemu(virtual_machine["vmid"]).status.post(status)
+                )
         else:
-            vm = [v for v in vms if v["vmid"] == vmid]
-            if len(vm) == 1:
-                node = vm[0]["node"]
-                results.append(self.proxmox_instance.nodes(node).qemu(vmid).status.post(status))
+            virtual_machine = [v for v in vms if v["vmid"] == vmid]
+            if len(virtual_machine) == 1:
+                node = virtual_machine[0]["node"]
+                results.append(
+                    self.proxmox_instance.nodes(node).qemu(vmid).status.post(
+                        status
+                    )
+                )
 
-
-    def clone_vm(self, vmid, name, description=None, full=None, storage=None, target=None, block=True, duplicate=None) :
-        """
-            Clone a vm.
-            Parameters:
-                vmid (int): the vm id to be cloned from
-                name (str): name of the cloned vm
-                description (str): description of the cloned vm
-                full (bool): full clone if true else linked clone
-                storage (str): which storage to use for the cloned vm
-                target (str): the target not for the cloned vm
-                block (bool): if true will wait for each clone to be finished (this prevent io saturation for exemple on NFS)
-                duplicate (int): how many clone to produce ? (each vm name is suffixed with an integer index)
-            Return: a list of 
-        """
-        vms = self.get_vms(format="internal")
-        vm = [v for v in vms if vmid == v["vmid"]]
-        if len(vm) == 0:
-            raise Exception("Unable to find vm %s" % vmid)
+    def clone_vm(
+            self,
+            vmid,
+            name,
+            description=None,
+            full=None,
+            storage=None,
+            target=None,
+            block=True,
+            duplicate=None
+    ) -> None:
+        """Clone a vm."""
+        vms = self.get_vms(output_format="internal")
+        virtual_machine = [v for v in vms if vmid == v["vmid"]]
+        if len(virtual_machine) == 0:
+            raise proxcli_exceptions.ProxmoxVmNotFoundException
         else:
-            vm = vm[0]
+            virtual_machine = virtual_machine[0]
 
-        if vm["status"] != "stopped":
-            raise Exception("VM must be stopped before cloning")
+        if virtual_machine["status"] != "stopped":
+            raise proxcli_exceptions.ProxmoxVmNeedStopException
 
-        src_node = vm["node"]
+        src_node = virtual_machine["node"]
         dst_node = target
 
         if not duplicate:
-            result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
-                "newid": self.get_next_id(),
-                "node": src_node,
-                "vmid": int(vmid),
-                "name": name,
-                "description": description,
-                "full": full,
-                "storage": storage,
-                "target": dst_node
-            })
-            if block: 
-                result = self.taskBlock(result)
+            node = self.proxmox_instance.nodes(src_node)
+            result = node.qemu(vmid).clone.post(
+                **{
+                    "newid": self.get_next_id(),
+                    "node": src_node,
+                    "vmid": int(vmid),
+                    "name": name,
+                    "description": description,
+                    "full": full,
+                    "storage": storage,
+                    "target": dst_node
+                }
+            )
+            if block:
+                self.task_block(result)
         else:
-            results = []
             for index in range(duplicate):
-                instance_name = "%s-%s" % (name, str(index))
-                result = self.proxmox_instance.nodes(src_node).qemu(vmid).clone.post(**{
+                instance_name = f"{name}-{str(index)}"
+                node = self.proxmox_instance.nodes(src_node)
+                result = node.qemu(vmid).clone.post(**{
                     "newid": self.get_next_id(),
                     "node": src_node,
                     "vmid": int(vmid),
@@ -860,166 +987,137 @@ class proxmox():
                     "description": description,
                     "full": full,
                     "storage": storage,
-                    "target": dst_node              
+                    "target": dst_node
                 })
                 if block:
-                    result = self.taskBlock(result)
-                    results.append(result)
-                
+                    self.task_block(result)
 
-        return result
+    def get_next_id(self) -> Any:
+        """get next available container/vm id"""
+        return self.proxmox_instance.cluster.nextid.get()
 
-    ### CONTAINERS (need rework) ###
+    # INVENTORY #
 
+    def inventory(
+        self,
+        save="",
+        output_format="yaml",
+        include_tag="",
+        exclude_tag="",
+        filter_name=""
 
-    def get_container_config(self, vmid) :
-        """retrieve container configuration"""
-        containers = self.get_containers(format="internal", filter=".*")
-        container = [c for c in containers if c["vmid"] == vmid]
-        if len(container) == 1:
-            node = container[0]["node"]
-        else:
-            raise Exception("container with id %s not found" % vmid)
-        config = self.proxmox_instance.nodes(node).lxc(vmid).config.get()
-        return config
-
-
-    def status_containers(self,status=None, filter=None) :
-        """set status of containers matching filter"""
-        containers = self.get_containers(format="internal", filter=filter)
-        if not containers: 
-            return False
-        results = []
-        for container in containers:
-            results.append(self.proxmox_instance.nodes(container["node"]).lxc(container["vmid"]).status.post(status))
-
-
-    def get_containers(self, format="internal", filter=None) :
-        """retrieve a list of containers
-        display the list in the specified format or return raw data if format is internal (default)
-        a regexp filter can be specified to reduce the list 
+    ) -> None:
         """
-        nodes = self.get_nodes(format="internal")
-        updated_vms = []
-        nodes = [n for n in nodes if n["status"] == "online"]
-        for node in nodes:
-            vms = self.proxmox_instance.nodes(node["node"]).lxc.get()
-            for vm in vms:
-                    # add on which node the vm is running
-                    vm["node"] = node["node"]
-                    # if tags are empty create an empty key:value pair
-                    if "tags" not in vm.keys():
-                        vm["tags"] = ""
-                    # apply filter on vms 
-                    if filter and self.ismatching(filter, vm["name"]):
-                        updated_vms.append(vm)
-                    elif not filter:
-                        updated_vms.append(vm)
-        return self.output(headers=self.headers_lxc, data=updated_vms, format=format)   
-
-    ### CONTAINER AND VMS 
-    
-    def get_next_id(self) :
-        """get next available container id
-
-        Returns:
-            int: next available vm/container id
+            generate ansible inventory from virtual machine tags
+            display or save in file
         """
-
-        '''
-        get the next available container or vm id
-
-        '''
-        return int(self.proxmox_instance.cluster.nextid.get())
-
-    ### INVENTORY ###
-
-    def inventory(self, bind_users=[], save=False, format="yaml") :
-        vms = self.get_vms(format="internal")
-        bind = {}
+        vms = self.get_vms(output_format="internal")
         vms_enhanced = []
-        for vm in vms:
-            ip = self.get_vm_public_ip(vm["node"], vm["vmid"])
-            vm["ip"] = ip
-            vms_enhanced.append(vm)
+        for virtual_machine in vms:
+            if virtual_machine["status"] == "running":
+                vm_ip = self.get_vm_public_ip(
+                    virtual_machine["node"],
+                    virtual_machine["vmid"]
+                )
+                virtual_machine["ip"] = vm_ip
+            if filter_name != "":
+                if re.match(
+                    filter_name,
+                    virtual_machine["name"]
+                ):
+                    vms_enhanced.append(virtual_machine)
+            else:
+                vms_enhanced.append(virtual_machine)
 
         inventory = {}
 
-        if len(bind_users) > 0:
-            bind = dict([v.split(':') for v in bind_users])
-
-        for vm in vms_enhanced:
-            if vm["ip"]:
-                if not "all" in inventory.keys():
+        for virtual_machine in vms_enhanced:
+            if virtual_machine["ip"]:
+                if "all" not in inventory:
                     inventory["all"] = {}
 
-                if not "hosts" in inventory["all"].keys():
+                if "hosts" not in inventory["all"]:
                     inventory["all"]["hosts"] = {}
 
-                if not "children" in inventory["all"].keys():
+                if "children" not in inventory["all"]:
                     inventory["all"]["children"] = {}
 
-                inventory["all"]["hosts"][vm["name"]] = {"ansible_host": vm["ip"]}
-                
-                for tag in vm["tags"].replace(";",",").split(","):
-                    if not tag in inventory["all"]["children"].keys():
+                inventory["all"]["hosts"][virtual_machine["name"]] = {
+                    "ansible_host": virtual_machine["ip"]
+                }
+
+                for tag in virtual_machine["tags"].replace(
+                    ";", ","
+                ).split(","):
+                    if tag not in inventory["all"]["children"].keys():
                         inventory["all"]["children"][tag] = {"hosts": {}}
-                    inventory["all"]["children"][tag]["hosts"][vm["name"]] = {"ansible_host": vm["ip"]}
-                    # if tag in bind.keys():
-                    #     inventory["all"]["hosts"][vm["name"]]["ansible_user"] = bind[tag]
-                    #     for host in inventory["all"]["children"][tag]["hosts"].keys():
-                    #         inventory["all"]["children"][tag]["hosts"][host]["ansible_user"] = bind[tag]
+                    inventory["all"]["children"][tag]["hosts"][
+                        virtual_machine["name"]
+                    ] = {"ansible_host": virtual_machine["ip"]}
 
-
-        self.output(data = inventory, format=format, save=save)
-
-    ### CONFIG ###
- 
-    def create_config(self, hosts=None, user=None, password=None):
-        config = '''
-        [credentials]
-        hosts=%s
-        user=%s
-        password=%s
-        [headers]
-        nodes=node,status
-        qemu=vmid,name,status,pid,node,cpu,mem,template,ip,tags
-        lxc=vmid,name,status,pid,node,cpu,mem,ip,tags
-        storage=storage,node,content,type,active,enabled,shared,used_fraction
-        tasks=starttime,endtime,node,user,type,id,status
-        ha_groups=group,type,nodes,digest,restricted,nofailback
-        ha_resources=vmid,name,group,type,digest,sid,max_relocate,state
-        cluster_log=date,severity, user,msg,node,pid,tag,uid
-        cluster_status=id,type,quorate,version,name,nodes
-        cluster_status_node=id,nodeid,online,name,type,local,ip,level
-        [data]
-        colorize=online:green,offline:red,running:green,stopped:red,k3s:yellow,failed:red,error:red,OK:green,problems:red,panic:red,alert:red,critical:red,warning:orage,notice:blue,info:blue,debug:violet
-        style=STYLE_BOX
-        [tasks]
-        polling_interval=1
-        timeout=300 
-        ''' % (hosts, user,password)
-        config_file = "%s/.proxmox" % os.environ.get("HOME")
-        if not os.path.exists(config_file):
-            h = open(config_file, "w")
-            h.write(config)
-            h.close()
-            print("Config file created at ~/.proxmox")
+        if save != "":
+            with open(save, "w", encoding="utf-8", ) as file_handle:
+                file_handle.write(yaml.dump(inventory))
         else:
-            print("A configuration already exist at %s" % config_file)
+            self.output(data=inventory, output_format=output_format)
 
+    # CONFIG #
 
-    def dump_config(self) :
-        config_file = "%s/.proxmox" % os.environ.get("HOME")
+    def create_config(self, hosts=None, user=None, password=None) -> None:
+        """create a proxcli configuration file"""
+        config = (
+            f"[credentials]\n"
+            f"hosts={hosts}\n"
+            f"user={user}\n"
+            f"password={password}\n"
+            f"[headers]\n"
+            f"nodes=node,status\n"
+            f"qemu=vmid,name,status,pid,node,cpu,mem,template,ip,tags\n"
+            f"lxc=vmid,name,status,pid,node,cpu,mem,ip,tags\n"
+            f"storage=storage,node,content,type,active,enabled,shared,\
+used_fraction\n"
+            f"tasks=starttime,endtime,node,user,type,id,status\n"
+            f"ha_groups=group,type,nodes,digest,restricted,nofailback\n"
+            f"ha_resources=vmid,name,group,type,digest,\
+sid,max_relocate,state\n"
+            f"cluster_log=date,severity, user,msg,node,pid,tag,uid\n"
+            f"cluster_status=id,type,quorate,version,name,nodes\n"
+            f"cluster_status_node=id,nodeid,online,name,type,local,ip,level\n"
+            f"node_networks=node,iface,active,method,address,cidr,netmask,\
+gateway,bridge_ports,bridge_stp,type,priority,autostart,\
+method6,bridge_fd\n"
+            f"[data]\n"
+            f"colorize=online:green,offline:red,running:green,stopped:red,k3s:\
+yellow,failed:red,error:red,OK:green,problems:red,panic:red,\
+alert:red,critical:red,warning:orage,notice:blue,info:blue,\
+RUNNING:blue,debug:violet\n"
+            f"style=STYLE_BOX\n"
+            f"[tasks]\n"
+            f"polling_interval=1\n"
+            f"timeout=300\n"
+        )
+        home = os.environ.get("HOME")
+        config_file = f"{home}/.proxmox"
+        if not os.path.exists(config_file):
+            with open(config_file, "w", encoding="utf-8") as file_handle:
+                file_handle.write(config)
+                print("Config file created at ~/.proxmox")
+        else:
+            print(
+                f"A configuration already exist at {config_file}"
+            )
+
+    def dump_config(self) -> None:
+        """dump proxcli configuration to stdout"""
+        home = os.environ.get("HOME")
+        config_file = f"{home}/.proxmox"
         if os.path.exists(config_file):
-            h = open(config_file, "r")
-            config = h.read()
-            h.close()
+            config = ""
+            with open(config_file, "r", encoding="utf-8") as file_handle:
+                config = file_handle.read()
             print(config)
         else:
             print("Config does not exist yet.")
             print("Generate config with the following command")
-            print("proxmox config create --hosts host1,host2,...,hostn --user user --password password")
-    
-
-        
+            print("proxmox config create --hosts host1,host2,...,hostn "
+                  "--user user --password password")
