@@ -1,4 +1,4 @@
-import setuptools
+"""Setup proxcli"""
 from setuptools import setup
 setup(
     name='proxcli',
@@ -8,8 +8,8 @@ setup(
     maintainer_email='david.guenault@gmail.com',
     maintainer='David GUENAULT',
     license='Apache License Version 2.0',
-    python_requires=">=3.6",    
-    py_modules=['proxcli', 'proxmoxlib'],
+    python_requires=">=3.6",
+    py_modules=['proxcli', 'proxmoxlib', 'proxcli_exceptions'],
     install_requires=[
         'beautifultable==1.1.0',
         'certifi==2023.7.22',
