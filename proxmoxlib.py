@@ -427,6 +427,7 @@ class Proxmox():
 
     def delete_ha_resources(self, filter_name=None, vmid=None) -> None:
         """delete resource from ha group"""
+        vmid = None if vmid == -1 else vmid
         if filter_name:
             resources = self.get_ha_resources(
                 output_format="internal",
@@ -438,11 +439,17 @@ class Proxmox():
                     ha_endpoint = self.proxmox_instance.cluster.ha
                     ha_endpoint.resources.delete(resource["vmid"])
 
-        if vmid > 0:
+        if int(vmid) > 0:
             print(f"Removing resource {(vmid,)}")
             self.proxmox_instance.cluster.ha.resources.delete(vmid)
 
-    def migrate_ha_resources(self, node, filter_name=None, vmid=None) -> None:
+    def migrate_ha_resources(
+            self,
+            node,
+            filter_name=None,
+            vmid=None,
+            block=False
+    ) -> None:
         """migrate a resource from ha group"""
         if filter_name:
             vms = self.get_vms(
@@ -458,8 +465,13 @@ class Proxmox():
                     )
                 )
                 ha_group = self.proxmox_instance.cluster.ha
-                ha_group.resources(virtual_machine["vmid"]).migrate.post(
-                    **{'node': node})
+                migrate_job_id = ha_group.resources(
+                    virtual_machine["vmid"]).migrate.post(
+                    **{'node': node}
+                )
+                if block:
+                    print(f"Wait for {migrate_job_id} to finish")
+                    self.task_block(migrate_job_id)
 
         if vmid:
             print(
@@ -891,7 +903,7 @@ class Proxmox():
         '''
         vms = self.get_vms(output_format="internal", filter_name=fitler_name)
         vms = [] if not vms else vms
-        if vmid:
+        if vmid > 0:
             if vmid not in [v["vmid"] for v in vms]:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
             virtual_machine = [v for v in vms if vmid == v["vmid"]][0]
