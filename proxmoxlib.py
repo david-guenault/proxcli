@@ -853,7 +853,7 @@ class Proxmox():
 
     def set_tags(self, tags="", filter_name=None) -> None:
         """set virtual machine tags"""
-        vms = self.get_vms(output_format="json", filter_name=filter_name)
+        vms = self.get_vms(output_format="internal", filter_name=filter_name)
         vms = [] if not vms else vms
         for virtual_machine in vms:
             node = self.proxmox_instance.nodes(virtual_machine["node"])
