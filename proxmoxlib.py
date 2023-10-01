@@ -351,28 +351,29 @@ class Proxmox():
         """
         self.proxmox_instance.cluster.ha.groups.delete(group)
 
-    def get_ha_resources(self) -> None:
+    def get_ha_resources(
+            self,
+            output_format="table",
+            filter_name="^.*$"
+    ) -> Any:
         """retrieve a list of cluster ha resources with named cluster ha groups
 
         Returns:
             list: list of ha resources
         """
-        vms = self.get_vms(output_format="internal")
-        if not vms:
-            return
         resources = self.proxmox_instance.cluster.ha.resources.get()
         if not resources:
             resources = []
         for resource in resources:
             vmid = resource["sid"].split(":")[-1]
-            virtual_machine = [
-                v for v in vms if int(v["vmid"]) == int(vmid)][0]
-            resource["vmid"] = vmid
+            virtual_machine = self.get_vm_by_id_or_name(vmid=vmid)
             resource["name"] = virtual_machine["name"]
+            resource["vmid"] = vmid
+        resources = [r for r in resources if re.match(filter_name, r["name"])]
         return self.output(
             headers=self.headers_ha_resources,
             data=resources,
-            output_format="table"
+            output_format=output_format
         )
 
     def create_ha_resource(
@@ -418,20 +419,26 @@ class Proxmox():
                 'state': state
             })
 
+    def vm_ha_resource_managed(self, vmid):
+        """checker if a vm is ha managed"""
+        resources = self.get_ha_resources(output_format="internal")
+        resources = [str(r["vmid"]) for r in resources]
+        return True if str(vmid) in resources else False
+
     def delete_ha_resources(self, filter_name=None, vmid=None) -> None:
         """delete resource from ha group"""
         if filter_name:
-            vms = self.get_vms(
-                output_format="internal",
+            resources = self.get_ha_resources(
+                 output_format="internal",
                 filter_name=filter_name
             )
-            vms = [] if not vms else vms
-            for virtual_machine in vms:
-                print(f"Removing resource {(virtual_machine['vmid'],)}")
-                ha_endpoint = self.proxmox_instance.cluster.ha
-                ha_endpoint.resources.delete(virtual_machine["vmid"])
+            for resource in resources:
+                if int(resource["vmid"]) > 0:
+                    print(f"Removing resource {(resource['vmid'],)}")
+                    ha_endpoint = self.proxmox_instance.cluster.ha
+                    ha_endpoint.resources.delete(resource["vmid"])
 
-        if vmid:
+        if vmid > 0:
             print(f"Removing resource {(vmid,)}")
             self.proxmox_instance.cluster.ha.resources.delete(vmid)
 

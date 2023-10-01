@@ -150,7 +150,7 @@ def ha_groups_delete(
 @ha_resources.command("list")
 def ha_resources_list():
     """list ha resources"""
-    p.get_ha_resources()
+    p.get_ha_resources(output_format="table")
 
 
 @ha_resources.command("add")
