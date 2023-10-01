@@ -191,13 +191,15 @@ def ha_resources_delete(
 def ha_resources_migrate(
     node: Annotated[str, typer.Option()],
     filter_name: Annotated[str, typer.Option()] = "",
-    vmid: Annotated[int, typer.Option()] = -1
+    vmid: Annotated[int, typer.Option()] = -1,
+    block: Annotated[bool, typer.Option()] = False
 ):
     """migrate an ha resource"""
     p.migrate_ha_resources(
         filter_name=None if filter_name == "" else filter_name,
         vmid=None if vmid == -1 else vmid,
-        node=node
+        node=node,
+        block=block
     )
 
 
@@ -388,9 +390,9 @@ def vms_delete(
 ):
     """delete vms matching regex filter applied on vm name or by vmid.
     vmid and filter are mutualy exclusive"""
-    if not vmid and not filter_name:
+    if vmid == -1 and filter_name == "":
         raise proxcli_exceptions.VmIdentificationException()
-    if vmid and filter_name:
+    if vmid > 0 and filter_name != "":
         raise proxcli_exceptions.VmIdMutualyExclusiveException()
     if not confirm:
         message_values = (vmid, filter_name)
@@ -405,8 +407,8 @@ def vms_delete(
                     f'matching filter {message_values[1]}'
                 )
             )
-    if not confirm:
-        raise typer.Abort()
+        if not confirm:
+            raise typer.Abort()
     p.output(
         output_format="internal",
         data=p.delete_vms(
@@ -419,6 +421,7 @@ def vms_delete(
 
 def vms_status_apply(filter_name, vmid, status):
     """apply a status to a vm (start, stop, suspend ....)"""
+    vmid = None if int(vmid) == -1 else vmid
     if vmid and filter_name:
         print("You can't specify a filter and a vmid at the same time")
     else:
