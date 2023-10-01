@@ -429,7 +429,7 @@ class Proxmox():
         """delete resource from ha group"""
         if filter_name:
             resources = self.get_ha_resources(
-                 output_format="internal",
+                output_format="internal",
                 filter_name=filter_name
             )
             for resource in resources:
