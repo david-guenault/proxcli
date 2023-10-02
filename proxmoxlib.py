@@ -427,7 +427,6 @@ class Proxmox():
 
     def delete_ha_resources(self, filter_name=None, vmid=None) -> None:
         """delete resource from ha group"""
-        vmid = None if vmid == -1 else vmid
         if filter_name:
             resources = self.get_ha_resources(
                 output_format="internal",
@@ -439,7 +438,7 @@ class Proxmox():
                     ha_endpoint = self.proxmox_instance.cluster.ha
                     ha_endpoint.resources.delete(resource["vmid"])
 
-        if int(vmid) > 0:
+        if vmid > 0:
             print(f"Removing resource {(vmid,)}")
             self.proxmox_instance.cluster.ha.resources.delete(vmid)
 
@@ -448,40 +447,61 @@ class Proxmox():
             node,
             filter_name=None,
             vmid=None,
-            block=False
+            block=False,
+            block_max_try=3
     ) -> None:
         """migrate a resource from ha group"""
+        virtual_machines = []
         if filter_name:
-            vms = self.get_vms(
+            virtual_machines = self.get_vms(
                 output_format="internal",
                 filter_name=filter_name
             )
-            vms = [] if not vms else vms
-            for virtual_machine in vms:
-                print(
-                    (
-                        f"migrating resource {(virtual_machine['vmid'],)} "
-                        f"to node {(node,)}"
-                    )
-                )
-                ha_group = self.proxmox_instance.cluster.ha
-                migrate_job_id = ha_group.resources(
-                    virtual_machine["vmid"]).migrate.post(
-                    **{'node': node}
-                )
-                if block:
-                    print(f"Wait for {migrate_job_id} to finish")
-                    self.task_block(migrate_job_id)
+            virtual_machines = [] if not virtual_machines else virtual_machines
 
         if vmid:
+            virtual_machines = [self.get_vm_by_id_or_name(vmid=vmid)]
+
+        for virtual_machine in virtual_machines:
             print(
                 (
-                    f"migrating resource {(vmid,)}"
+                    f"migrating resource {(virtual_machine['vmid'],)} "
                     f"to node {(node,)}"
                 )
             )
-            ha_resource = self.proxmox_instance.cluster.ha.resources(vmid)
-            ha_resource.migrate.post(**{'node': node})
+            ha_group = self.proxmox_instance.cluster.ha
+            ha_group.resources(virtual_machine["vmid"]).migrate.post(
+                **{'node': node})
+            if block:
+                current_try = 0
+                current_node = "unknown"
+                virtual_machine_status = "unknown"
+                print("Waiting for migration to finish")
+                while (
+                    current_node != node or
+                    virtual_machine_status != "running" or
+                    current_try < block_max_try
+                ):
+                    virtual_machine = self.get_vm_by_id_or_name(
+                        vmid=virtual_machine["vmid"]
+                    )
+                    if virtual_machine["node"] != node:
+                        vmid = virtual_machine["vmid"]
+                        virtual_machine_status = virtual_machine["status"]
+                        # print((
+                        #     f"status: {virtual_machine_status}, "
+                        #     f"current node: {current_node}"
+                        #     f"target node: {node}"
+                        # ))
+                    else:
+                        # print((
+                        #     f"Not migration virtual machine "
+                        #     f"{virtual_machine['name']} as "
+                        #     f"it is already on target node "
+                        #     f"{node}"
+                        # ))
+                        break
+                    current_try += 1
 
     def relocate_ha_resources(
             self,
@@ -802,10 +822,13 @@ class Proxmox():
                     "status" in virtual_machine and
                     virtual_machine["status"] == "running"
                 ):
-                    virtual_machine["ip"] = self.get_vm_public_ip(
-                        node=virtual_machine["node"],
-                        vmid=virtual_machine["vmid"]
-                    )
+                    try:
+                        virtual_machine["ip"] = self.get_vm_public_ip(
+                            node=virtual_machine["node"],
+                            vmid=virtual_machine["vmid"]
+                        )
+                    except KeyError:
+                        virtual_machine["ip"] = "N/A"
                 else:
                     virtual_machine["ip"] = "N/A"
                 # if tags are empty create an empty key:value pair
@@ -903,7 +926,7 @@ class Proxmox():
         '''
         vms = self.get_vms(output_format="internal", filter_name=fitler_name)
         vms = [] if not vms else vms
-        if vmid > 0:
+        if vmid:
             if vmid not in [v["vmid"] for v in vms]:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
             virtual_machine = [v for v in vms if vmid == v["vmid"]][0]
