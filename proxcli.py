@@ -397,16 +397,15 @@ def vms_delete(
     if vmid > 0 and filter_name != "":
         raise proxcli_exceptions.VmIdMutualyExclusiveException()
     if not confirm:
-        message_values = (vmid, filter_name)
-        if vmid:
+        if vmid > 0:
             confirm = typer.confirm(
-                f"Do you realy want to delete vm {message_values[0]}"
+                f"Do you realy want to delete vm {vmid}"
             )
-        if filter_name:
+        if filter_name != "":
             confirm = typer.confirm(
                 (
                     f'Do you realy want to delete vms '
-                    f'matching filter {message_values[1]}'
+                    f'matching filter {filter_name}'
                 )
             )
         if not confirm:
