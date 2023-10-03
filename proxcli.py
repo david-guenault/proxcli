@@ -207,13 +207,15 @@ def ha_resources_migrate(
 def ha_resources_relocate(
     proxmox_node: Annotated[str, typer.Option()],
     filter_name: Annotated[str, typer.Option()] = "",
-    vmid: Annotated[int, typer.Option()] = -1
+    vmid: Annotated[int, typer.Option()] = -1,
+    block: Annotated[bool, typer.Option()] = False
 ):
     """relocate ha resource"""
     p.relocate_ha_resources(
         filter_name=filter_name,
         vmid=vmid,
-        proxmox_node=proxmox_node
+        proxmox_node=proxmox_node,
+        block=block
     )
 
 
