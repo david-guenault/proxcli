@@ -503,39 +503,72 @@ class Proxmox():
                         break
                     current_try += 1
 
+    def get_resource_by_id_or_name(self, vmid=None, resource_name=None) -> Any:
+        """get reosurce by its id or name"""
+        resources = self.get_ha_resources(output_format="internal")
+        resources = [] if not resources else resources
+        if vmid:
+            resource = [v for v in resources if v["vmid"] == int(vmid)]
+        else:
+            resource = [v for v in resources if v["name"] == resource_name]
+        if len(resource) == 0:
+            return False
+        return resource[0]
+
     def relocate_ha_resources(
             self,
             proxmox_node,
             filter_name=None,
-            vmid=None
+            vmid=None,
+            block=False,
+            block_max_try=3
     ) -> None:
         """relocate ha resource"""
-        ha_cluster = self.proxmox_instance.cluster.ha
-        if filter_name:
-            vms = self.get_vms(
+        print((
+            f"node {proxmox_node} "
+            f"filter {filter_name} "
+            f"id {vmid} "
+            f"block {block}"
+        ))
+        resources = []
+        if filter_name and filter_name != "":
+            resources = self.get_ha_resources(
                 output_format="internal",
                 filter_name=filter_name
             )
-            vms = [] if not vms else vms
-            for virtual_machine in vms:
-                print(
-                    (
-                        f"migrating resource {(virtual_machine['vmid'],)}"
-                        f"to node {(proxmox_node,)}"
-                    )
-                )
-                ha_cluster.resources(virtual_machine["vmid"]).relocate.post(
-                    **{'node': proxmox_node})
-
-        if vmid:
+            resources = [] if not resources else resources
+        if vmid and vmid > 0:
+            resources = [self.get_resource_by_id_or_name(vmid=vmid)]
+        
+        for resource in resources:
             print(
                 (
-                    f"migrating resource {(vmid,)}"
+                    f"relocating resource {(resource['vmid'],)} "
                     f"to node {(proxmox_node,)}"
                 )
             )
-            ha_cluster.ha.resources(vmid).relocate.post(
+            ha_group = self.proxmox_instance.cluster.ha
+            ha_group.resources(resource["vmid"]).relocate.post(
                 **{'node': proxmox_node})
+            if block:
+                current_try = 0
+                current_node = "unknown"
+                virtual_machine_status = "unknown"
+                print("Waiting for relocation to finish")
+                while (
+                    current_node != proxmox_node or
+                    virtual_machine_status != "running" or
+                    current_try < block_max_try
+                ):
+                    resource = self.get_vm_by_id_or_name(
+                        vmid=resource["vmid"]
+                    )
+                    if resource and resource["node"] != proxmox_node:
+                        vmid = resource["vmid"]
+                        virtual_machine_status = resource["status"]
+                    else:
+                        break
+                    current_try += 1
 
     def get_storages(self, output_format="json") -> Any:
         """list storages"""
