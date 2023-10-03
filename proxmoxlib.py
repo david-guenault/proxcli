@@ -932,25 +932,14 @@ class Proxmox():
         tags = list(set([item for sublist in tags for item in sublist]))
         print(", ".join(tags))
 
-    def delete_vms(self, fitler_name=None, vmid=None, block=True) -> None:
-        '''
-        delete vms matching specified regex applied on vm names
-        only stoped vms are removed
-        filter and vmid are mutualy exclusive
-            Parameters:
-                filter (string): regex filter applied on vms names
-                                 (only the matching vms will be deleted)
-                vmid (int): vm id to delete
-                block (bool): if True will wait for each deletion to end.
-            Returns
-                True if success
-        '''
-        vms = self.get_vms(output_format="internal", filter_name=fitler_name)
-        vms = [] if not vms else vms
-        if vmid:
-            if vmid not in [v["vmid"] for v in vms]:
+    def delete_vms(self, fitler_name="", vmid=-1, block=True) -> None:
+        """ delete vms matching specified regex applied on vm names """
+        virtual_machines = self.get_vms(output_format="internal", filter_name=fitler_name)
+        virtual_machines = [] if not virtual_machines else virtual_machines
+        if vmid > 0:
+            if vmid not in [v["vmid"] for v in virtual_machines]:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
-            virtual_machine = [v for v in vms if vmid == v["vmid"]][0]
+            virtual_machine = [v for v in virtual_machines if vmid == v["vmid"]][0]
             if virtual_machine["status"] != "stopped":
                 raise proxcli_exceptions.ProxmoxVmNeedStopException
             node = self.proxmox_instance.nodes(virtual_machine["node"])
@@ -959,9 +948,9 @@ class Proxmox():
                 self.task_block(delete_job_id)
         else:
             results = []
-            if len(vms) == 0:
+            if len(virtual_machines) == 0:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
-            for virtual_machine in vms:
+            for virtual_machine in virtual_machines:
                 if virtual_machine["status"] == "stopped":
                     node = self.proxmox_instance.nodes(virtual_machine["node"])
                     results.append(
