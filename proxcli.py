@@ -189,7 +189,7 @@ def ha_resources_delete(
 
 @ha_resources.command("migrate")
 def ha_resources_migrate(
-    node: Annotated[str, typer.Option()],
+    proxmox_node: Annotated[str, typer.Option()],
     filter_name: Annotated[str, typer.Option()] = "",
     vmid: Annotated[int, typer.Option()] = -1,
     block: Annotated[bool, typer.Option()] = False
@@ -198,7 +198,7 @@ def ha_resources_migrate(
     p.migrate_ha_resources(
         filter_name=None if filter_name == "" else filter_name,
         vmid=None if vmid == -1 else vmid,
-        node=node,
+        proxmox_node=proxmox_node,
         block=block
     )
 

@@ -444,62 +444,50 @@ class Proxmox():
 
     def migrate_ha_resources(
             self,
-            node,
+            proxmox_node=None,
             filter_name=None,
             vmid=None,
             block=False,
             block_max_try=3
     ) -> None:
         """migrate a resource from ha group"""
-        virtual_machines = []
-        if filter_name:
-            virtual_machines = self.get_vms(
+        resources = []
+        if filter_name and filter_name != "":
+            resources = self.get_ha_resources(
                 output_format="internal",
                 filter_name=filter_name
             )
-            virtual_machines = [] if not virtual_machines else virtual_machines
-
-        if vmid:
-            virtual_machines = [self.get_vm_by_id_or_name(vmid=vmid)]
-
-        for virtual_machine in virtual_machines:
+            resources = [] if not resources else resources
+        if vmid and vmid > 0:
+            resources = [self.get_resource_by_id_or_name(vmid=vmid)]
+        
+        for resource in resources:
             print(
                 (
-                    f"migrating resource {(virtual_machine['vmid'],)} "
-                    f"to node {(node,)}"
+                    f"migrating resource {(resource['vmid'],)} "
+                    f"to node {(proxmox_node,)}"
                 )
             )
             ha_group = self.proxmox_instance.cluster.ha
-            ha_group.resources(virtual_machine["vmid"]).migrate.post(
-                **{'node': node})
+            ha_group.resources(resource["vmid"]).migrate.post(
+                **{'node': proxmox_node})
             if block:
                 current_try = 0
                 current_node = "unknown"
                 virtual_machine_status = "unknown"
                 print("Waiting for migration to finish")
                 while (
-                    current_node != node or
+                    current_node != proxmox_node or
                     virtual_machine_status != "running" or
                     current_try < block_max_try
                 ):
-                    virtual_machine = self.get_vm_by_id_or_name(
-                        vmid=virtual_machine["vmid"]
+                    resource = self.get_vm_by_id_or_name(
+                        vmid=resource["vmid"]
                     )
-                    if virtual_machine["node"] != node:
-                        vmid = virtual_machine["vmid"]
-                        virtual_machine_status = virtual_machine["status"]
-                        # print((
-                        #     f"status: {virtual_machine_status}, "
-                        #     f"current node: {current_node}"
-                        #     f"target node: {node}"
-                        # ))
+                    if resource and resource["node"] != proxmox_node:
+                        vmid = resource["vmid"]
+                        virtual_machine_status = resource["status"]
                     else:
-                        # print((
-                        #     f"Not migration virtual machine "
-                        #     f"{virtual_machine['name']} as "
-                        #     f"it is already on target node "
-                        #     f"{node}"
-                        # ))
                         break
                     current_try += 1
 
