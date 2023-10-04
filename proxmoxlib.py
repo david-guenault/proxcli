@@ -460,7 +460,7 @@ class Proxmox():
             resources = [] if not resources else resources
         if vmid and vmid > 0:
             resources = [self.get_resource_by_id_or_name(vmid=vmid)]
-        
+
         for resource in resources:
             print(
                 (
@@ -527,7 +527,7 @@ class Proxmox():
             resources = [] if not resources else resources
         if vmid and vmid > 0:
             resources = [self.get_resource_by_id_or_name(vmid=vmid)]
-        
+
         for resource in resources:
             print(
                 (
@@ -934,12 +934,18 @@ class Proxmox():
 
     def delete_vms(self, fitler_name="", vmid=-1, block=True) -> None:
         """ delete vms matching specified regex applied on vm names """
-        virtual_machines = self.get_vms(output_format="internal", filter_name=fitler_name)
-        virtual_machines = [] if not virtual_machines else virtual_machines
+        virtual_machines = self.get_vms(
+            output_format="internal",
+            filter_name=fitler_name
+        )
+        if not virtual_machines:
+            virtual_machines = []
         if vmid > 0:
             if vmid not in [v["vmid"] for v in virtual_machines]:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
-            virtual_machine = [v for v in virtual_machines if vmid == v["vmid"]][0]
+            virtual_machine = [
+                v for v in virtual_machines if vmid == v["vmid"]
+            ][0]
             if virtual_machine["status"] != "stopped":
                 raise proxcli_exceptions.ProxmoxVmNeedStopException
             node = self.proxmox_instance.nodes(virtual_machine["node"])
