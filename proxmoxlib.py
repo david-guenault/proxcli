@@ -1090,7 +1090,7 @@ class Proxmox():
         inventory = {}
 
         for virtual_machine in vms_enhanced:
-            if virtual_machine["ip"]:
+            if virtual_machine["ip"] and virtual_machine["ip"] != "N/A":
                 if "all" not in inventory:
                     inventory["all"] = {}
 
@@ -1104,20 +1104,33 @@ class Proxmox():
                     "ansible_host": virtual_machine["ip"]
                 }
 
-                for tag in virtual_machine["tags"].replace(
+                exclude_tags = exclude_tag.split(",")
+                tags = virtual_machine["tags"].replace(
                     ";", ","
-                ).split(","):
-                    if tag not in inventory["all"]["children"].keys():
-                        inventory["all"]["children"][tag] = {"hosts": {}}
-                    inventory["all"]["children"][tag]["hosts"][
-                        virtual_machine["name"]
-                    ] = {"ansible_host": virtual_machine["ip"]}
+                ).split(",")
+                process = False
+                if exclude_tags != "":
+                    if len(list(set(exclude_tags) & set(tags))) == 0:
+                        process = True
+                if process:
+                    for tag in virtual_machine["tags"].replace(
+                        ";", ","
+                    ).split(","):
+                        if virtual_machine["ip"] != "N/A":
+                            if tag not in inventory["all"]["children"].keys():
+                                inventory["all"]["children"][tag] = {
+                                    "hosts": {}
+                                }
+                            inventory["all"]["children"][tag]["hosts"][
+                                virtual_machine["name"]
+                            ] = {"ansible_host": virtual_machine["ip"]}
 
         if save != "":
             with open(save, "w", encoding="utf-8", ) as file_handle:
                 file_handle.write(yaml.dump(inventory))
         else:
-            self.output(data=inventory, output_format=output_format)
+            if len(inventory) > 0:
+                self.output(data=inventory, output_format=output_format)
 
     # CONFIG #
 
