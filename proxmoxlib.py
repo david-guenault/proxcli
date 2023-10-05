@@ -1075,7 +1075,6 @@ class Proxmox():
         self,
         save="",
         output_format="yaml",
-        include_tag="",
         exclude_tag="",
         filter_name=""
 

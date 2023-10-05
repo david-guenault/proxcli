@@ -500,7 +500,6 @@ def inventory_save(
 
 @inventory.command("show")
 def inventory_show(
-    include_tag: Annotated[str, typer.Option()] = "",
     exclude_tag: Annotated[str, typer.Option()] = "",
     filter_name: Annotated[str, typer.Option()] = "",
     output_format: Annotated[str, typer.Option()] = "yaml"
@@ -508,7 +507,6 @@ def inventory_show(
     """display computed ansible inventory"""
     p.inventory(
         output_format=output_format,
-        include_tag=include_tag,
         exclude_tag=exclude_tag,
         filter_name=filter_name
     )
