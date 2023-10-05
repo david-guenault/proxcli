@@ -432,10 +432,11 @@ def vms_status_apply(filter_name, vmid, status):
 @tags.command("set")
 def tags_set(
     vm_tags: Annotated[str, typer.Option()],
+    set_mode: Annotated[str, typer.Option()] = "replace",
     filter_name: Annotated[str, typer.Option()] = "^.*"
 ):
     """set vm tags"""
-    p.set_tags(tags=vm_tags, filter_name=filter_name)
+    p.set_tags(tags=vm_tags, filter_name=filter_name, set_mode=set_mode)
 
 
 @tags.command("list")

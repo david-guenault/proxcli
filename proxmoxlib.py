@@ -914,11 +914,26 @@ class Proxmox():
                         )
                     )
 
-    def set_tags(self, tags="", filter_name=None) -> None:
+    def set_tags(self, tags="", filter_name=None, set_mode="replace") -> None:
         """set virtual machine tags"""
         vms = self.get_vms(output_format="internal", filter_name=filter_name)
         vms = [] if not vms else vms
         for virtual_machine in vms:
+            if set_mode == "append":
+                # normalize and extract tags list
+                existing_tags = ([] if virtual_machine["tags"] == ""
+                                 else virtual_machine["tags"].replace(
+                    ";", ","
+                ).split(","))
+                # add tags
+                append_tags = tags.replace(";", ",").split(",")
+                # merge the existing and appending
+                tags = existing_tags + append_tags
+                # deduplicate if needed
+                tags = list(set(tags))
+                # merge in a coma separated list
+                tags = ",".join(tags)
+            print(virtual_machine["vmid"], tags)
             node = self.proxmox_instance.nodes(virtual_machine["node"])
             node.qemu(virtual_machine["vmid"]).config.put(**{'tags': tags})
 
