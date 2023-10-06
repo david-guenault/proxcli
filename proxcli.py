@@ -4,7 +4,7 @@ import typer
 from typing_extensions import Annotated
 from proxmoxlib import Proxmox
 import proxcli_exceptions
-
+import sys
 
 app = typer.Typer(no_args_is_help=True)
 vms = typer.Typer(no_args_is_help=True)
@@ -505,6 +505,9 @@ def inventory_show(
     output_format: Annotated[str, typer.Option()] = "yaml"
 ):
     """display computed ansible inventory"""
+    if output_format not in ("json", "yaml"):
+        print("Only json and yaml are valid options value for output-format")
+        sys.exit(2)
     p.inventory(
         output_format=output_format,
         exclude_tag=exclude_tag,
