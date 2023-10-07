@@ -491,6 +491,9 @@ def inventory_save(
     output_format: Annotated[str, typer.Option()] = "yaml"
 ):
     """save ansible inventory"""
+    if output_format not in ("json", "yaml"):
+        print("Only json and yaml are valid options value for output-format")
+        sys.exit(2)    
     p.inventory(
         save=path,
         output_format=output_format,
