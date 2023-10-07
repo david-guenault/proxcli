@@ -219,13 +219,13 @@ class Proxmox():
     def storages_upload(
         self,
         file,
-        node,
+        proxmox_node,
         storage,
         content
     ) -> None:
         """upload image or iso file to proxmox node"""
         with open(str(file), 'rb') as file_handler:
-            storage = self.proxmox_instance.nodes(node).storage(storage)
+            storage = self.proxmox_instance.nodes(proxmox_node).storage(storage)
             storage.upload.post(content=content, filename=file_handler)
 
     # CLUSTER #
@@ -259,7 +259,7 @@ class Proxmox():
 
     def get_cluster_log(
             self,
-            nodes,
+            proxmox_nodes,
             severities,
             output_format="internal",
             max_items=100
@@ -284,17 +284,17 @@ class Proxmox():
         logs = self.proxmox_instance.cluster.log.get(**{'max': max_items})
         if not logs:
             logs = []
-        nodes = [n.strip() for n in nodes.split(",")]
+        proxmox_nodes = [n.strip() for n in proxmox_nodes.split(",")]
         severities = [s.strip() for s in severities.split(",")]
         filtered_logs = []
         for log in logs:
             log["severity"] = translate_severity[str(log["pri"])]
             log["date"] = self.readable_date(log["time"])
             if log["severity"] in severities:
-                if len(nodes) == 0:
+                if len(proxmox_nodes) == 0:
                     filtered_logs.append(log)
                 else:
-                    if log["node"] in nodes:
+                    if log["node"] in proxmox_nodes:
                         filtered_logs.append(log)
 
         if len(filtered_logs) == 0:
@@ -318,7 +318,7 @@ class Proxmox():
     def create_ha_group(
             self,
             group,
-            nodes,
+            proxmox_nodes,
             nofailback=False,
             restricted=False
     ) -> None:
@@ -338,7 +338,7 @@ class Proxmox():
         restricted = 0 if restricted is False else 1
         self.proxmox_instance.cluster.ha.groups.post(**{
             "group": group,
-            "nodes": nodes,
+            "nodes": proxmox_nodes,
             "nofailback": nofailback,
             "restricted": restricted
         })
@@ -657,15 +657,15 @@ class Proxmox():
 
     def get_nodes_network(
             self,
-            nodes=None,
+            proxmox_nodes=None,
             output_format="table"
     ) -> Any:
         """get the default ip address from a node"""
-        if not nodes:
+        if not proxmox_nodes:
             return []
-        nodes = nodes.split(",")
+        proxmox_nodes = proxmox_nodes.split(",")
         networks = []
-        for node in nodes:
+        for node in proxmox_nodes:
             result = self.proxmox_instance.nodes(node).network.get()
             result = [] if not result else result
             for net in result:
@@ -769,7 +769,7 @@ class Proxmox():
             data["sshkeys"] = urllib_parse.quote(sshkey.strip(), safe='')
         self.proxmox_instance.nodes(node).qemu(vmid).config.put(**data)
 
-    def get_vm_public_ip(self, node, vmid, net_type="ipv4") -> Any:
+    def get_vm_public_ip(self, proxmox_node, vmid, net_type="ipv4") -> Any:
         '''
         retrieve vm public ip only work with qemu vms
 
@@ -780,7 +780,7 @@ class Proxmox():
         '''
         interfaces = None
         try:
-            agent = self.proxmox_instance.nodes(node).qemu(vmid).agent
+            agent = self.proxmox_instance.nodes(proxmox_node).qemu(vmid).agent
             interfaces = agent.get("network-get-interfaces")
         except ResourceException:
             pass
@@ -805,7 +805,7 @@ class Proxmox():
             self,
             output_format="json",
             filter_name=None,
-            nodes=None,
+            proxmox_nodes=None,
             status="stopped,running"
     ) -> Any:
         '''
@@ -823,18 +823,18 @@ class Proxmox():
         all_nodes = self.get_nodes()
         updated_vms = []
 
-        if not nodes and all_nodes:
+        if not proxmox_nodes and all_nodes:
             all_nodes = [n for n in all_nodes if n["status"] == "online"]
         else:
-            nodes = str(nodes).split(",")
+            proxmox_nodes = str(proxmox_nodes).split(",")
             all_nodes = [] if not all_nodes else all_nodes
             all_nodes = [n for n in all_nodes if
-                         n["status"] == "online" and n["node"] in nodes]
-        nodes = all_nodes
+                         n["status"] == "online" and n["node"] in proxmox_nodes]
+        proxmox_nodes = all_nodes
 
         status = status.split(",")
 
-        for node in nodes:
+        for node in proxmox_nodes:
             vms = self.proxmox_instance.nodes(node["node"]).qemu.get()
             vms = [] if not vms else vms
             for virtual_machine in vms:
@@ -847,7 +847,7 @@ class Proxmox():
                 ):
                     try:
                         virtual_machine["ip"] = self.get_vm_public_ip(
-                            node=virtual_machine["node"],
+                            proxmox_node=virtual_machine["node"],
                             vmid=virtual_machine["vmid"]
                         )
                     except KeyError:
@@ -873,7 +873,7 @@ class Proxmox():
             output_format=output_format
         )
 
-    def migrate_vms(self, target_node, filter_name=None, vmid=None) -> None:
+    def migrate_vms(self, proxmox_node, filter_name=None, vmid=None) -> None:
         """migrate vm from a node to another one"""
         if filter_name and vmid:
             raise proxcli_exceptions.VmIdMutualyExclusiveException
@@ -889,7 +889,7 @@ class Proxmox():
             node.qemu(vmid).migrate.post(
                 **{
                     'node': virtual_machine["node"],
-                    'target': target_node,
+                    'target': proxmox_node,
                     'vmid': vmid
                 }
             )
@@ -904,7 +904,7 @@ class Proxmox():
                     node.qemu(virtual_machine["vmid"]).migrate.post(
                         **{
                             'node': source_node,
-                            'target': target_node,
+                            'target': proxmox_node,
                             'vmid': virtual_machine["vmid"]
                         }
                     )
@@ -912,7 +912,7 @@ class Proxmox():
                         (
                             f"Migration vm {virtual_machine['name']}"
                             f"from {source_node}"
-                            f"to {target_node}"
+                            f"to {proxmox_node}"
                         )
                     )
 
