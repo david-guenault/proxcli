@@ -708,6 +708,8 @@ class Proxmox():
         virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
         if not virtual_machine:
             raise proxcli_exceptions.ProxmoxVmNotFoundException
+        if virtual_machine["status"] != "stopped":
+            raise proxcli_exceptions.ProxmoxVmNeedStopException
         node = virtual_machine["node"]
         vmid = virtual_machine["vmid"] if not vmid else vmid
         config = self.get_vms_config(vmid)
