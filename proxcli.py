@@ -105,7 +105,7 @@ def cluster_log(
     p.get_cluster_log(
         output_format=output_format,
         max_items=max_items,
-        nodes=proxmox_nodes,
+        proxmox_nodes=proxmox_nodes,
         severities=severities)
 
 
@@ -131,7 +131,7 @@ def ha_groups_create(
     """create a cluster ha group"""
     p.create_ha_group(
         group=group,
-        nodes=proxmox_nodes,
+        proxmox_nodes=proxmox_nodes,
         restricted=restricted,
         nofailback=nofailback
     )
@@ -286,7 +286,7 @@ def vms_migrate(
     """migrate vms matching filter to a specified target_node"""
     if not vmid:
         filter_name = "^.*$"
-    p.migrate_vms(filter_name=filter_name, target_node=target_node, vmid=vmid)
+    p.migrate_vms(filter_name=filter_name, proxmox_node=target_node, vmid=vmid)
 
 
 @vms.command("list")
@@ -300,7 +300,7 @@ def vms_list(
     p.get_vms(
         output_format=output_format,
         filter_name=filter_name,
-        nodes=proxmox_node,
+        proxmox_nodes=proxmox_node,
         status=status
     )
 
@@ -465,7 +465,7 @@ def networks_list(
     """list all network for a subset of nodes"""
 
     p.get_nodes_network(
-        nodes=proxmox_nodes,
+        proxmox_nodes=proxmox_nodes,
         output_format=output_format
     )
 
@@ -534,7 +534,7 @@ def storages_upload(
     p.storages_upload(
         file=file,
         storage=storage,
-        node=proxmox_node,
+        proxmox_node=proxmox_node,
         content=content
     )
 
