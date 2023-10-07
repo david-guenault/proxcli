@@ -487,6 +487,7 @@ def tasks_list(
 @inventory.command("save")
 def inventory_save(
     path: Annotated[str, typer.Option()] = "",
+    exclude_tag: Annotated[str, typer.Option()] = "",
     filter_name: Annotated[str, typer.Option()] = "",
     output_format: Annotated[str, typer.Option()] = "yaml"
 ):
@@ -496,6 +497,7 @@ def inventory_save(
         sys.exit(2)    
     p.inventory(
         save=path,
+        exclude_tag=exclude_tag,
         output_format=output_format,
         filter_name=filter_name
     )
