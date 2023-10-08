@@ -148,9 +148,11 @@ def ha_groups_delete(
 
 
 @ha_resources.command("list")
-def ha_resources_list():
+def ha_resources_list(
+    filter_name: Annotated[str, typer.Option()] = ""
+):
     """list ha resources"""
-    p.get_ha_resources(output_format="table")
+    p.get_ha_resources(output_format="table", filter_name=filter_name)
 
 
 @ha_resources.command("add")
