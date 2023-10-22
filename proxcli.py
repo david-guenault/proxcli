@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 """Proxcli is a remote proxmox cluster management tool"""
+import sys
 import typer
 from typing_extensions import Annotated
 from proxmoxlib import Proxmox
 import proxcli_exceptions
-import sys
 
 app = typer.Typer(no_args_is_help=True)
 vms = typer.Typer(no_args_is_help=True)
 nodes = typer.Typer(no_args_is_help=True)
 storages = typer.Typer(no_args_is_help=True)
+storages_content = typer.Typer(no_args_is_help=True)
 config = typer.Typer(no_args_is_help=True)
 networks = typer.Typer(no_args_is_help=True)
 tasks = typer.Typer(
@@ -33,7 +34,8 @@ app.add_typer(config, name="config")
 app.add_typer(tasks, name="tasks")
 app.add_typer(cluster, name="cluster")
 app.add_typer(replications, name="replications")
-
+nodes.add_typer(storages, name="storages")
+storages.add_typer(storages_content, name="content")
 nodes.add_typer(networks, name="networks")
 vms.add_typer(
     tags,
@@ -43,7 +45,6 @@ vms.add_typer(
 ha.add_typer(ha_groups, name="groups", help="manage ha groups")
 ha.add_typer(ha_resources, name="resources", help="manage ha resources")
 
-cluster.add_typer(storages, name="storages", help="cluster storage commands")
 cluster.add_typer(ha, name="ha", help="high availibility commands")
 
 p = Proxmox()
@@ -496,7 +497,7 @@ def inventory_save(
     """save ansible inventory"""
     if output_format not in ("json", "yaml"):
         print("Only json and yaml are valid options value for output-format")
-        sys.exit(2)    
+        sys.exit(2)
     p.inventory(
         save=path,
         exclude_tag=exclude_tag,
@@ -538,6 +539,44 @@ def storages_upload(
         storage=storage,
         proxmox_node=proxmox_node,
         content=content
+    )
+
+
+@storages_content.command("list")
+def storages_content_list(
+    storage: Annotated[str, typer.Option()],
+    proxmox_node: Annotated[str, typer.Option()] = "",
+    output_format: Annotated[str, typer.Option()] = "table",
+    content_type: Annotated[str, typer.Option()] = "",
+    content_format: Annotated[str, typer.Option()] = "",
+    filter_orphaned: Annotated[str, typer.Option()] = "YES,NO,N/A"
+):
+    """list storage content"""
+    p.get_storage_content(
+        proxmox_node=proxmox_node,
+        storage=storage,
+        content_type=content_type,
+        content_format=content_format,
+        output_format=output_format,
+        filter_orphaned=filter_orphaned
+    )
+
+
+@storages_content.command("clean_orphaned")
+def storages_content_clean_orphaned(
+    storage: Annotated[str, typer.Option()],
+    proxmox_node: Annotated[str, typer.Option()],
+    confirm: Annotated[bool, typer.Option()] = True,
+    content_type: Annotated[str, typer.Option()] = "",
+    content_format: Annotated[str, typer.Option()] = ""
+):
+    """list storage content"""
+    p.clean_orphaned_storage_content(
+        proxmox_node=proxmox_node,
+        storage=storage,
+        confirm=confirm,
+        content_type=content_type,
+        content_format=content_format,
     )
 
 
