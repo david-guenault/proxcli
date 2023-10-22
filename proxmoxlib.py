@@ -218,6 +218,29 @@ class Proxmox():
         )
 
     # STORAGE #
+
+    def get_storages(self, output_format="json") -> Any:
+        """list storages"""
+        # nodes = self.get_nodes(format="internal")
+        # nodes = [] if not nodes else nodes
+        # available_nodes = [n for n in nodes if n["status"] == "online"]
+        # if len(available_nodes) > 0:
+        #     query_node = available_nodes[0]
+        # else:
+        #     raise ProxmoxClusterDownException
+
+        all_storages = []
+
+        storages = self.proxmox_instance.storage.get()
+        storages = [] if not storages else storages
+        for storage in storages:
+            all_storages.append(storage)
+        return self.output(
+            headers=self.headers_storage,
+            data=all_storages,
+            output_format=output_format
+        )
+
     def storages_upload(
         self,
         file,
@@ -253,7 +276,7 @@ class Proxmox():
 
     def get_storage_content(
         self,
-        proxmox_nodes,
+        proxmox_node,
         storage,
         output_format="json",
         headers="",
@@ -262,21 +285,13 @@ class Proxmox():
         filter_orphaned="YES,NO,N/A"
     ) -> Any:
         """get storage content list"""
-        if not proxmox_nodes or proxmox_nodes == "":
-            proxmox_nodes = [
-                n["node"] for n in self.get_nodes(
-                    output_format="internal"
-                )
-            ]
         headers = self.headers_storage_content if (
             not headers or headers == "") else headers
         results = []
         formats = content_format.split(",") if len(content_format) > 0 else []
         contents = content_type.split(",") if len(content_type) > 0 else []
-        for proxmox_node in proxmox_nodes:
-            result = self.proxmox_instance.nodes(
-                proxmox_node).storage(storage).content.get()
-            results += result
+        results = self.proxmox_instance.nodes(
+            proxmox_node).storage(storage).content.get()
         # filter by content and format if needed
         if len(formats) > 0:
             results = [result for result in results if (
@@ -293,7 +308,46 @@ class Proxmox():
             volume["orphaned"] in filter_orphaned
         )]
         headers = [] if not headers or len(headers) == 0 else headers
-        self.output(headers=headers, data=results, output_format=output_format)
+        return self.output(
+            headers=headers,
+            data=results,
+            output_format=output_format
+        )
+
+    def clean_orphaned_storage_content(
+      self,
+      proxmox_node,
+      storage,
+      content_type,
+      content_format,
+      confirm=True
+    ):
+        """ clean orphaned volumes in node storage """
+        orphaned = self.get_storage_content(
+            proxmox_node=proxmox_node,
+            storage=storage,
+            output_format="internal",
+            filter_orphaned="YES",
+            content_type=content_type,
+            content_format=content_format
+        )
+        delete_volume = False
+        for o in orphaned:
+            if confirm:
+                response = input((
+                    f"Do you realy want to delete "
+                    f"volume {o['volid']} ?"
+                ))
+                if response:
+                    delete_volume = True
+                else:
+                    delete_volume = False
+            else:
+                delete_volume = True
+            if delete_volume:
+                print(f"delete {o['volid']}")
+                self.proxmox_instance.nodes(proxmox_node).storage(
+                    storage).content(o["volid"]).delete()
 
     # CLUSTER #
 
@@ -624,28 +678,6 @@ class Proxmox():
                     else:
                         break
                     current_try += 1
-
-    def get_storages(self, output_format="json") -> Any:
-        """list storages"""
-        # nodes = self.get_nodes(format="internal")
-        # nodes = [] if not nodes else nodes
-        # available_nodes = [n for n in nodes if n["status"] == "online"]
-        # if len(available_nodes) > 0:
-        #     query_node = available_nodes[0]
-        # else:
-        #     raise ProxmoxClusterDownException
-
-        all_storages = []
-
-        storages = self.proxmox_instance.storage.get()
-        storages = [] if not storages else storages
-        for storage in storages:
-            all_storages.append(storage)
-        return self.output(
-            headers=self.headers_storage,
-            data=all_storages,
-            output_format=output_format
-        )
 
     # NODES #
 

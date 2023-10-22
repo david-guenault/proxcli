@@ -545,7 +545,7 @@ def storages_upload(
 @storages_content.command("list")
 def storages_content_list(
     storage: Annotated[str, typer.Option()],
-    proxmox_nodes: Annotated[str, typer.Option()] = "",
+    proxmox_node: Annotated[str, typer.Option()] = "",
     output_format: Annotated[str, typer.Option()] = "table",
     content_type: Annotated[str, typer.Option()] = "",
     content_format: Annotated[str, typer.Option()] = "",
@@ -553,12 +553,30 @@ def storages_content_list(
 ):
     """list storage content"""
     p.get_storage_content(
-        proxmox_nodes=proxmox_nodes,
+        proxmox_node=proxmox_node,
         storage=storage,
         content_type=content_type,
         content_format=content_format,
         output_format=output_format,
         filter_orphaned=filter_orphaned
+    )
+
+
+@storages_content.command("clean_orphaned")
+def storages_content_clean_orphaned(
+    storage: Annotated[str, typer.Option()],
+    proxmox_node: Annotated[str, typer.Option()],
+    confirm: Annotated[bool, typer.Option()] = True,
+    content_type: Annotated[str, typer.Option()] = "",
+    content_format: Annotated[str, typer.Option()] = ""
+):
+    """list storage content"""
+    p.clean_orphaned_storage_content(
+        proxmox_node=proxmox_node,
+        storage=storage,
+        confirm=confirm,
+        content_type=content_type,
+        content_format=content_format,
     )
 
 
