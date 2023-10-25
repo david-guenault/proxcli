@@ -1,0 +1,51 @@
+versions:
+
+setup:
+  proxcli:
+    path: /home/david/Documents/proxcli/venv/bin/proxcli
+  proxmox:
+    pm_user: "root@pam"
+    pm_password: "dfgdfg"
+    nodes: 
+      - 192.168.1.101
+      - 192.168.1.102
+      - 192.168.1.103
+provision_template:
+  enable: true
+  project: "b4p"
+  env: "prod"
+  count: 1
+  target_node: pve2
+  clone: "100"
+  full_clone: "true"
+  sshkeys: "~/.ssh/id_rsa.pub"
+  tags:
+    - "qemu"
+  disk_storage: "b4papp"
+  disk_size: "30G"
+  cores: 2
+  memory: 2048
+provision_instances:
+  grafana:
+    env:
+      name: "prod"
+      index: "01"
+    instances:
+      - server:
+        tags: 
+          - "grafana"
+          - "grafana-server"
+          - "metrics"
+          - "lab"
+        desc: "grafana server"
+        target_node: pve1
+        memory: 4096
+      - mariadb:
+        count: 3
+        tags: 
+          - "grafana"
+          - "grafana-db"
+          - "metrics"
+          - "lab"
+        desc: "grafana database"
+        target_node: pve1
