@@ -1,0 +1,24 @@
+---
+# - name: create proxmox instances with proxcli utility
+#   ansible.builtin.debug:
+#     msg: "{{item.clone | default('provision_template.clone')}}"
+#   delegate_to: localhost
+#   loop: lookup('provision_instances.grafana.instances')
+
+- name: create proxmox instances with proxcli utility
+  ansible.builtin.debug:
+    msg: |
+      {{setup.proxcli.path}} vms clone \
+      --vmid {{item.clone | default(provision_template.clone)}} \
+      --block \
+      --duplicate {{item.count | default(provision_template.count)}}
+
+  delegate_to: localhost
+  loop: "{{provision_instances.grafana.instances}}"
+
+# - name: create proxmox instances with proxcli utility
+#   ansible.builtin.debug:
+#     msg: "{{item}}"
+#   delegate_to: localhost
+#   loop: "{{provision_instances.grafana.instances}}"
+    

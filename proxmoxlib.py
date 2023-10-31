@@ -826,6 +826,7 @@ class Proxmox():
                 self,
                 vmid,
                 vmname,
+                filter_name,
                 cores,
                 sockets,
                 cpulimit,
@@ -838,11 +839,20 @@ class Proxmox():
                 sshkey=None
     ) -> None:
         """set vm config parameters"""
-        virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
-        if not virtual_machine:
-            raise proxcli_exceptions.ProxmoxVmNotFoundException
-        node = virtual_machine["node"]
-        vmid = virtual_machine["vmid"] if not vmid else vmid
+        vms = []
+        if len(filter_name) > 0:
+            # we work on a list of vms based on name filter
+            vms = self.get_vms(
+                output_format="internal", 
+                filter_name=filter_name
+            )
+        else:
+            # we work on one vm defined by its name or vmid
+            virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
+            if not virtual_machine:
+                raise proxcli_exceptions.ProxmoxVmNotFoundException
+            node = virtual_machine["node"]
+            vms = [virtual_machine,]
 
         data = {}
 
@@ -866,7 +876,8 @@ class Proxmox():
             data["boot"] = boot
         if sshkey and len(sshkey) > 0:
             data["sshkeys"] = urllib_parse.quote(sshkey.strip(), safe='')
-        self.proxmox_instance.nodes(node).qemu(vmid).config.put(**data)
+        for vm in vms:
+            self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).config.put(**data)
 
     def get_vm_public_ip(self, proxmox_node, vmid, net_type="ipv4") -> Any:
         '''

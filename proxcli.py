@@ -251,6 +251,7 @@ def vms_dump_config(vmid: str):
 @vms.command("set")
 def vms_set(
     vmid: Annotated[int, typer.Option()] = -1,
+    filter_name: Annotated[str, typer.Option()] = "",
     vmname: Annotated[str, typer.Option()] = "",
     cores: Annotated[int, typer.Option()] = -1,
     sockets: Annotated[int, typer.Option()] = -1,
@@ -266,6 +267,7 @@ def vms_set(
     """set vm parameters"""
     p.set_vms(
         vmid=vmid,
+        filter_name=filter_name,
         vmname=vmname,
         cores=cores,
         sockets=sockets,
