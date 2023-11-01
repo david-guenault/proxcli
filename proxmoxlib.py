@@ -1131,11 +1131,20 @@ class Proxmox():
             storage=None,
             target=None,
             block=True,
-            duplicate=None
+            duplicate=None,
+            strategy="spread",
+            proxmox_nodes=""
     ) -> None:
         """Clone a vm."""
         vms = self.get_vms(output_format="internal")
         virtual_machine = [v for v in vms if vmid == v["vmid"]]
+
+        if len(proxmox_nodes) == 0:
+            block = True
+            proxmox_nodes = [n["node"] for n in self.get_nodes()]
+        else:
+            proxmox_nodes = proxmox_nodes.split(",")
+
         if len(virtual_machine) == 0:
             raise proxcli_exceptions.ProxmoxVmNotFoundException
         else:
@@ -1147,11 +1156,14 @@ class Proxmox():
         src_node = virtual_machine["node"]
         dst_node = target
 
+        vmids = []
+
         if not duplicate:
             node = self.proxmox_instance.nodes(src_node)
+            next_vmid = self.get_next_id()
             result = node.qemu(vmid).clone.post(
                 **{
-                    "newid": self.get_next_id(),
+                    "newid": next_vmid,
                     "node": src_node,
                     "vmid": int(vmid),
                     "name": name,
@@ -1161,14 +1173,16 @@ class Proxmox():
                     "target": dst_node
                 }
             )
+            vmids.append(next_vmid)
             if block:
                 self.task_block(result)
         else:
             for index in range(duplicate):
                 instance_name = f"{name}-{str(index)}"
                 node = self.proxmox_instance.nodes(src_node)
+                next_vmid = self.get_next_id()
                 result = node.qemu(vmid).clone.post(**{
-                    "newid": self.get_next_id(),
+                    "newid": next_vmid,
                     "node": src_node,
                     "vmid": int(vmid),
                     "name": instance_name,
@@ -1177,8 +1191,35 @@ class Proxmox():
                     "storage": storage,
                     "target": dst_node
                 })
+                vmids.append(next_vmid)
                 if block:
                     self.task_block(result)
+
+        def spread(ids, count):
+            """split vmids list in chunk with chunk count = nodes numbers"""
+            length = len(ids)
+            return [ids[i*length // count: (i+1)*length // count]
+                    for i in range(count)]
+        vms = self.get_vms(output_format="internal")
+
+        if strategy == "spread" and duplicate > 1:
+            chunks = spread(vmids, len(proxmox_nodes))
+            index = 0
+            for node in proxmox_nodes:
+                for vmid in chunks[index]:
+                    vm = [v for v in vms if str(v["vmid"]) == str(vmid)]
+                    ids = [v["vmid"] for v in vms]
+                    if len(vm) == 0:
+                        print(f"vm {vmid} not found")
+                        print(ids)
+                    else:
+                        vm = vm[0]
+                        if vm["node"] == node:
+                            print(f"not migrating vm {vmid}. Already on selected node {node}")
+                        else:
+                            print(f"starting migration of vm {vmid} to node {node}")
+                            self.migrate_vms(proxmox_node=node, vmid=vmid)
+                index += 1
 
     def get_next_id(self) -> Any:
         """get next available container/vm id"""

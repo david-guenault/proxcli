@@ -373,7 +373,9 @@ def vms_clone(
     storage: Annotated[str, typer.Option()] = "",
     target: Annotated[str, typer.Option()] = "",
     block: Annotated[bool, typer.Option()] = False,
-    duplicate: Annotated[int, typer.Option()] = 1
+    duplicate: Annotated[int, typer.Option()] = 1,
+    strategy: Annotated[str, typer.Option()] = "spread",
+    proxmox_nodes: Annotated[str, typer.Option()] = ""
 ) -> None:
     """clone an existing vm"""
     p.clone_vm(
@@ -384,7 +386,9 @@ def vms_clone(
         storage=storage,
         target=target,
         block=block,
-        duplicate=duplicate
+        duplicate=duplicate,
+        strategy=strategy,
+        proxmox_nodes=proxmox_nodes
     )
 
 
