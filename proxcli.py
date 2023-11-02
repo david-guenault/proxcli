@@ -161,6 +161,7 @@ def ha_resources_create(
     group: Annotated[str, typer.Option()],
     name: Annotated[str, typer.Option()] = "",
     vmid: Annotated[int, typer.Option()] = -1,
+    filter_name: Annotated[str, typer.Option()] = "",
     comment: Annotated[str, typer.Option()] = "",
     max_relocate: Annotated[int, typer.Option()] = 1,
     max_restart: Annotated[int, typer.Option()] = 1,
@@ -170,6 +171,7 @@ def ha_resources_create(
     p.create_ha_resource(
         name=name,
         vmid=vmid,
+        filter_name=filter_name,
         group=group,
         comment=comment,
         max_relocate=max_relocate,
