@@ -1,24 +1,55 @@
 ---
-# - name: create proxmox instances with proxcli utility
-#   ansible.builtin.debug:
-#     msg: "{{item.clone | default('provision_template.clone')}}"
+# - name: create proxmox instances
+#   ansible.builtin.shell:
+#     cmd: >
+#       {{setup.proxcli.path}} vms clone 
+#       --vmid {{item.clone | default(provision_template.clone)}} 
+#       --name {{project}}-{{item.name}}
+#       --block 
+#       --full-clone
+#       --duplicate {{item.count | default(provision_template.count)}}
+#       --vm-description '{{item.description | default("")}}'
+#       --storage {{item.disk_storage | default(provision_template.disk_storage)}}
+#       --strategy {{item.strategy | default(provision_template.strategy)}}
+#       --proxmox-nodes {{item.nodes | default(provision_template.nodes)}}
+#       --target {{item.target | default(provision_template.target)}}
 #   delegate_to: localhost
-#   loop: lookup('provision_instances.grafana.instances')
+#   loop: "{{provision_instances[project].instances}}"
 
-- name: create proxmox instances with proxcli utility
-  ansible.builtin.debug:
-    msg: |
-      {{setup.proxcli.path}} vms clone \
-      --vmid {{item.clone | default(provision_template.clone)}} \
-      --block \
-      --duplicate {{item.count | default(provision_template.count)}}
+# - name: wait a few seconds 
+#   ansible.builtin.shell: sleep 5
+#   delegate_to: localhost
 
+# - name: configure proxmox instances
+#   ansible.builtin.shell:
+#     cmd: > 
+#       {{setup.proxcli.path}} vms set 
+#       --filter-name '^{{project}}-{{item.name}}'
+#       --ciuser {{item.user | default(provision_template.user)}}
+#       --cipassword {{item.password | default(provision_template.password)}}
+#       --sshkey '{{lookup('ansible.builtin.file',provision_template.sshkey)}}'
+#       --ipconfig '{{provision_template.ipconfig}}'
+#       --cores {{item.cores | default(provision_template.cores)}}
+#       --memory {{item.memory | default(provision_template.memory)}}
+#   delegate_to: localhost
+#   loop: "{{provision_instances[project].instances}}"
+
+# - name: set proxmox instances tags
+#   ansible.builtin.shell:
+#     cmd: > 
+#       {{setup.proxcli.path}} vms tags set 
+#       --filter-name '^{{project}}-{{item.name}}'
+#       --vm-tags {{item.tags | join(',')}}
+#   delegate_to: localhost
+#   loop: "{{provision_instances[project].instances}}"
+
+- name: create ha groups
+  ansible.builtin.shell:
+    msg: > 
+      {{setup.proxcli.path}} cluster ha groups create
+      --group {{item.name}}
+      --proxmox-nodes {{item.nodes}}
+      {{item.restricted | ternary('--restricted', ' ')}}
+      {{item.nofailback | ternary('--nofailback', ' ')}}
   delegate_to: localhost
-  loop: "{{provision_instances.grafana.instances}}"
-
-# - name: create proxmox instances with proxcli utility
-#   ansible.builtin.debug:
-#     msg: "{{item}}"
-#   delegate_to: localhost
-#   loop: "{{provision_instances.grafana.instances}}"
-    
+  loop: "{{provision_instances[project].ha_groups}}"

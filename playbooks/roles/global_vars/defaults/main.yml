@@ -12,40 +12,74 @@ setup:
       - 192.168.1.103
 provision_template:
   enable: true
-  project: "b4p"
-  env: "prod"
   count: 1
-  target_node: pve2
-  clone: "100"
-  full_clone: "true"
-  sshkeys: "~/.ssh/id_rsa.pub"
+  target: "pve2"
+  clone: 100
+  full_clone: true
+  user: "system"
+  password: "system"
+  sshkey: "~/.ssh/id_rsa.pub"
+  ipconfig: "ip=dhcp"
   tags:
     - "qemu"
   disk_storage: "b4papp"
   disk_size: "30G"
   cores: 2
+  strategy: "spread"
+  nodes: pve1,pve2,pve3
   memory: 2048
 provision_instances:
-  grafana:
-    env:
-      name: "prod"
-      index: "01"
+  grafana-prod-01:
+    ha_groups:
+      - name: controlplanes
+        nodes: pve1,pve2,pve3
+        restricted: false
+        nofailback: true
+      - name: workers
+        nodes: pve1,pve2,pve3
+        restricted: false
+        nofailback: true
     instances:
-      - server:
+      - name: "server"
+        desc: "grafana server"
+        count: 3
         tags: 
           - "grafana"
           - "grafana-server"
           - "metrics"
           - "lab"
-        desc: "grafana server"
-        target_node: pve1
-        memory: 4096
-      - mariadb:
+      - name: "db"
+        desc: "grafana database"
         count: 3
         tags: 
           - "grafana"
           - "grafana-db"
           - "metrics"
           - "lab"
-        desc: "grafana database"
-        target_node: pve1
+      - name: "lb"
+        desc: "grafana load balancer"
+        count: 3
+        tags: 
+          - "grafana"
+          - "grafana-lb"
+          - "metrics"
+          - "lab"
+
+  k3s-prod-01:
+    instances:
+      - name: "controlplane"
+        desc: "control plane"
+        count: 3
+        tags: 
+          - "k3s"
+          - "controlplane"
+          - "kubernetes"
+          - "lab"
+      - name: "worker"
+        desc: "worker"
+        count: 6
+        tags: 
+          - "k3s"
+          - "worker"
+          - "kubernetes"
+          - "lab"
