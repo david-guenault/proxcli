@@ -502,13 +502,14 @@ class Proxmox():
             group,
             name=None,
             vmid=None,
+            filter_name=None,
             comment="",
             max_relocate=1,
             max_restart=1,
             state="started"
     ) -> None:
         """add a resource to ha group"""
-        if name:
+        if name and name != "":
             vms = self.get_vms(
                 output_format="internal",
                 filter_name=name
@@ -529,7 +530,8 @@ class Proxmox():
                     'max_restart': max_restart,
                     'state': state
                 })
-        if vmid:
+                return
+        if vmid and vmid > 0:
             print(f"Adding resource {(vmid,)} to group {(group,)}")
             self.proxmox_instance.cluster.ha.resources.post(**{
                 'sid': str(vmid),
@@ -539,6 +541,28 @@ class Proxmox():
                 'max_restart': max_restart,
                 'state': state
             })
+            return
+
+        if filter_name and filter_name != "":
+            vms = self.get_vms(
+                output_format="internal",
+                filter_name=filter_name
+            )
+            print(vms)
+            for vm in vms:
+                print(
+                    f"Adding resource {vmid} with name "
+                    f"{name} to group {group}"
+                )
+                self.proxmox_instance.cluster.ha.resources.post(**{
+                    'sid': str(vm["vmid"]),
+                    'comment': comment,
+                    'group': group,
+                    'max_relocate': max_relocate,
+                    'max_restart': max_restart,
+                    'state': state
+                })
+            return
 
     def vm_ha_resource_managed(self, vmid):
         """checker if a vm is ha managed"""
@@ -843,7 +867,7 @@ class Proxmox():
         if len(filter_name) > 0:
             # we work on a list of vms based on name filter
             vms = self.get_vms(
-                output_format="internal", 
+                output_format="internal",
                 filter_name=filter_name
             )
         else:
@@ -851,7 +875,6 @@ class Proxmox():
             virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
             if not virtual_machine:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
-            node = virtual_machine["node"]
             vms = [virtual_machine,]
 
         data = {}
@@ -877,7 +900,9 @@ class Proxmox():
         if sshkey and len(sshkey) > 0:
             data["sshkeys"] = urllib_parse.quote(sshkey.strip(), safe='')
         for vm in vms:
-            self.proxmox_instance.nodes(vm["node"]).qemu(vm["vmid"]).config.put(**data)
+            self.proxmox_instance.nodes(
+                vm["node"]
+            ).qemu(vm["vmid"]).config.put(**data)
 
     def get_vm_public_ip(self, proxmox_node, vmid, net_type="ipv4") -> Any:
         '''
@@ -1215,9 +1240,15 @@ class Proxmox():
                     else:
                         vm = vm[0]
                         if vm["node"] == node:
-                            print(f"not migrating vm {vmid}. Already on selected node {node}")
+                            print(
+                                f"not migrating vm {vmid}. "
+                                f"Already on selected node {node}"
+                            )
                         else:
-                            print(f"starting migration of vm {vmid} to node {node}")
+                            print(
+                                f"starting migration of vm {vmid} "
+                                f"to node {node}"
+                            )
                             self.migrate_vms(proxmox_node=node, vmid=vmid)
                 index += 1
 
