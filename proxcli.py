@@ -231,12 +231,14 @@ def ha_resources_relocate(
 def vms_disk_resize(
     size: Annotated[str, typer.Option()],
     vmid: Annotated[int, typer.Option()] = -1,
+    filter_name: Annotated[str, typer.Option()] = "",
     vmname: Annotated[str, typer.Option()] = "",
     disk: Annotated[str, typer.Option()] = ""
 ):
     """resize a vm disk"""
     p.resize_vms_disk(
         vmid=vmid,
+        filter_name=filter_name,
         vmname=vmname,
         size=size,
         disk=disk
