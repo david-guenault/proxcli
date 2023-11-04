@@ -1,15 +1,7 @@
-versions:
-
 setup:
   proxcli:
     path: /home/david/Documents/proxcli/venv/bin/proxcli
-  proxmox:
-    pm_user: "root@pam"
-    pm_password: "dfgdfg"
-    nodes: 
-      - 192.168.1.101
-      - 192.168.1.102
-      - 192.168.1.103
+
 provision_template:
   enable: true
   count: 1
@@ -20,9 +12,12 @@ provision_template:
   password: "system"
   sshkey: "~/.ssh/id_rsa.pub"
   ipconfig: "ip=dhcp"
+  block: true
+  full_clone: true
   tags:
     - "qemu"
   disk_storage: "b4papp"
+  disk_device: "virtio0"
   disk_size: "30G"
   cores: 2
   strategy: "spread"
@@ -31,55 +26,68 @@ provision_template:
 provision_instances:
   grafana-prod-01:
     ha_groups:
-      - name: controlplanes
+      server:
+        nodes: pve1,pve2
+        restricted: false
+        nofailback: true
+        max_restart: 3
+        max_relocate: 3
+      db:
+        nodes: pve1,pve2
+        restricted: false
+        nofailback: true
+        max_restart: 3
+        max_relocate: 3
+      lb:
         nodes: pve1,pve2,pve3
         restricted: false
         nofailback: true
-      - name: workers
-        nodes: pve1,pve2,pve3
-        restricted: false
-        nofailback: true
+        max_restart: 3
+        max_relocate: 3
     instances:
-      - name: "server"
+      server:
         desc: "grafana server"
         count: 3
+        ha_group: "server"
+        nodes: pve1,pve2
         tags: 
           - "grafana"
           - "grafana-server"
           - "metrics"
           - "lab"
-      - name: "db"
+      db:
         desc: "grafana database"
         count: 3
+        ha_group: "db"
+        nodes: pve1,pve2
         tags: 
           - "grafana"
           - "grafana-db"
           - "metrics"
           - "lab"
-      - name: "lb"
+      lb:
         desc: "grafana load balancer"
         count: 3
+        ha_group: "lb"
         tags: 
           - "grafana"
           - "grafana-lb"
           - "metrics"
           - "lab"
-
-  k3s-prod-01:
+  test-01:
+    ha_groups:
+      server:
+        nodes: pve1,pve2
+        restricted: false
+        nofailback: true
+        max_restart: 3
+        max_relocate: 3
     instances:
-      - name: "controlplane"
-        desc: "control plane"
-        count: 3
+      server:
+        nodes: pve1,pve2
+        desc: "test server"
+        count: 2
+        disk_size: "30G"
+        ha_group: "server"
         tags: 
-          - "k3s"
-          - "controlplane"
-          - "kubernetes"
-          - "lab"
-      - name: "worker"
-        desc: "worker"
-        count: 6
-        tags: 
-          - "k3s"
-          - "worker"
-          - "kubernetes"
           - "lab"
