@@ -3,6 +3,7 @@
 from datetime import datetime
 import enum
 import inspect
+import time
 from typing import Any
 from urllib import parse as urllib_parse
 import json
@@ -825,6 +826,42 @@ class Proxmox():
             f"nodes/{node}/qemu/{vmid}/config"
         )
         return config
+
+    def vms_wait_for_status(
+        self,
+        status,
+        filter_name="",
+        name="",
+        vmid=-1,
+        timeout=30
+    ) -> None:
+        """wait for selected vms to reach desired status"""
+        def get_vms(vmid=-1, name="", filter_name=""):
+            if (vmid > 0 or name != "") and filter_name == "":
+                vm = self.get_vm_by_id_or_name(vmid=vmid, vmname=name)
+                vms = [vm,]
+            elif (vmid == -1 and name == "" and filter_name != ""):
+                vms = self.get_vms(
+                    output_format="internal",
+                    filter_name=filter_name
+                )
+            return vms
+        status_ready = False
+        start = int(time.time())
+        while not status_ready:
+            vms = get_vms(vmid=vmid, name=name, filter_name=filter_name)
+            if len(vms) == 0:
+                raise proxcli_exceptions.ProxmoxVmNotFoundException
+            vms_status = [v["status"] for v in vms if status == v["status"]]
+            if len(vms_status) == len(vms):
+                status_ready = True
+            else:
+                time.sleep(0.5)
+            if time.time() - start > timeout:
+                raise proxcli_exceptions.VmWaitForStatusTimeoutException
+        return
+
+
 
     def resize_vms_disk(
             self,
