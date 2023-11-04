@@ -226,6 +226,23 @@ def ha_resources_relocate(
 
 # VMS #
 
+@vms.command("wait_for_status")
+def vms_wait_for_status(
+    status: Annotated[str, typer.Option()],
+    filter_name: Annotated[str, typer.Option()] = "",
+    name: Annotated[str, typer.Option()] = "",
+    vmid: Annotated[int, typer.Option()] = -1,
+    timeout: Annotated[int, typer.Option()] = 30
+):
+    """wait for selected vms to be in the desired status"""
+    p.vms_wait_for_status(
+        status=status,
+        filter_name=filter_name,
+        name=name,
+        vmid=vmid,
+        timeout=timeout
+    )
+
 
 @vms.command("resize")
 def vms_disk_resize(
