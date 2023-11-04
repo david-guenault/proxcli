@@ -2,6 +2,17 @@
 """Custom proxcli exceptions"""
 
 
+class VmWaitForStatusTimeoutException(Exception):
+    """occur when waiting for vm status elapsed
+    time is greater than timeout argument"""
+    def __init__(
+            self,
+            message="Waiting for vm status timeout."
+    ) -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 class VmIdentificationException(Exception):
     """raised when we have the choice between a filter
     or a vmid to specify vm selection and neither
