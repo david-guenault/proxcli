@@ -1,0 +1,46 @@
+---
+- name: stop all instances
+  ansible.builtin.shell:
+    cmd: > 
+      {{setup.proxcli.path}} vms stop
+      --filter-name '^{{project}}-{{item.key}}'
+  delegate_to: localhost
+  loop: "{{provision_instances[project].instances | dict2items}}"
+
+- name: wait for all instances stopped  
+  ansible.builtin.shell:
+    cmd: > 
+      {{setup.proxcli.path}} vms wait_for_status 
+      --filter-name '^{{project}}-{{item.key}}'
+      --status stopped
+  delegate_to: localhost
+  loop: "{{provision_instances[project].instances | dict2items}}"
+
+- name: delete resources from ha groups
+  ansible.builtin.shell:
+    cmd: > 
+      {{setup.proxcli.path}} cluster ha resources delete
+      --filter-name '^{{project}}-{{item.key}}'
+  delegate_to: localhost
+  ignore_errors: true
+  loop: "{{provision_instances[project].instances | dict2items}}"
+  when: "'ha_groups' in provision_instances[project]"
+
+- name: delete ha groups
+  ansible.builtin.shell:
+    cmd: > 
+      {{setup.proxcli.path}} cluster ha groups delete
+      --group '{{project}}-{{item.key}}'
+  delegate_to: localhost
+  ignore_errors: true
+  loop: "{{provision_instances[project].ha_groups | dict2items}}"
+  when: "'ha_groups' in provision_instances[project]"
+
+- name: delete instances
+  ansible.builtin.shell:
+    cmd: >
+      {{setup.proxcli.path}} vms delete --confirm
+      --filter-name '^{{project}}-{{item.key}}'
+  delegate_to: localhost
+  ignore_errors: true
+  with_items: "{{provision_instances[project].instances | dict2items}}"

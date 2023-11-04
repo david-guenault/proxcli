@@ -3,4 +3,4 @@
   connection: local
   roles:
     - global_vars
-    - proxmox_create
+    - proxmox_destroy

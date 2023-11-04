@@ -933,7 +933,7 @@ class Proxmox():
         if len(filter_name) > 0:
             # we work on a list of vms based on name filter
             vms = self.get_vms(
-                output_format="internal",
+                output_format="internal", 
                 filter_name=filter_name
             )
         else:
@@ -941,6 +941,7 @@ class Proxmox():
             virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
             if not virtual_machine:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
+            node = virtual_machine["node"]
             vms = [virtual_machine,]
 
         data = {}
@@ -1310,7 +1311,15 @@ class Proxmox():
                                 f"not migrating vm {vmid}. "
                                 f"Already on selected node {node}"
                             )
+                            print(
+                                f"not migrating vm {vmid}. "
+                                f"Already on selected node {node}"
+                            )
                         else:
+                            print(
+                                f"starting migration of vm {vmid} "
+                                f"to node {node}"
+                            )
                             print(
                                 f"starting migration of vm {vmid} "
                                 f"to node {node}"
