@@ -826,25 +826,54 @@ class Proxmox():
         )
         return config
 
-    def resize_vms_disk(self, size, vmid=None, vmname=None, disk=None) -> None:
+    def resize_vms_disk(
+            self,
+            size,
+            filter_name=None,
+            vmid=None,
+            vmname=None,
+            disk=None
+    ) -> None:
         """resize the first virtual machine disk"""
-        virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
-        if not virtual_machine:
-            raise proxcli_exceptions.ProxmoxVmNotFoundException
-        if virtual_machine["status"] != "stopped":
-            raise proxcli_exceptions.ProxmoxVmNeedStopException
-        node = virtual_machine["node"]
-        vmid = virtual_machine["vmid"] if not vmid else vmid
-        config = self.get_vms_config(vmid)
-        if not config:
-            raise proxcli_exceptions.ProxmoxVmConfigGetException
-        if not disk:
+
+        def get_disk(vmid):
             # if disk is not specified resize the default boot disk
-            boot = config["boot"].split(";")
-            disk = [v for v in boot if "order" in v][0].split("=")[1]
-        self.proxmox_instance.nodes(node).qemu(vmid).resize.put(
-            **{"disk": disk, "size": size}
-        )
+            config = self.get_vms_config(vmid)
+            if not config:
+                raise proxcli_exceptions.ProxmoxVmConfigGetException
+            disk = config["bootdisk"]
+            return disk
+
+        if vmid > 0 or vmname != "":
+            virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
+            if not virtual_machine:
+                raise proxcli_exceptions.ProxmoxVmNotFoundException
+            if virtual_machine["status"] != "stopped":
+                raise proxcli_exceptions.ProxmoxVmNeedStopException
+            node = virtual_machine["node"]
+            vmid = virtual_machine["vmid"] if not vmid else vmid
+            if not disk or disk == "":
+                disk = get_disk(vmid)
+            self.proxmox_instance.nodes(node).qemu(vmid).resize.put(
+                **{"disk": disk, "size": size}
+            )
+        else:
+            vms = self.get_vms(
+                output_format="internal",
+                filter_name=filter_name
+            )
+            for vm in vms:
+                if not disk or disk == "":
+                    disk = get_disk(vm["vmid"])
+                print(
+                    f"resize vm {vm['vmid']} "
+                    f"on node {vm['node']} "
+                    f"to {size} on disk {disk}"
+                )
+                self.proxmox_instance.nodes(
+                    vm["node"]).qemu(vm["vmid"]).resize.put(
+                        **{"disk": disk, "size": size}
+                    )
 
     def set_vms(
                 self,
