@@ -67,9 +67,9 @@
     cmd: > 
       {{setup.proxcli.path}} cluster ha groups create
       --group {{project}}-{{item.key}}
-      --proxmox-nodes {{item.value.nodes}}
-      {{item.value.restricted | ternary('--restricted', ' ')}}
-      {{item.value.nofailback | ternary('--nofailback', ' ')}}
+      --proxmox-nodes {{item.value.nodes | default(ha_groups_template.nodes)}}
+      {{item.value.restricted | default(ha_groups_template.restricted) | ternary('--restricted', ' ')}}
+      {{item.value.nofailback | default(ha_groups_template.nofailback) | ternary('--nofailback', ' ')}}
   delegate_to: localhost
   loop: "{{provision_instances[project].ha_groups | dict2items}}"
   when: "'ha_groups' in provision_instances[project]"
@@ -80,8 +80,8 @@
       {{setup.proxcli.path}} cluster ha resources add
       --filter-name '^{{project}}-{{item.key}}'
       --group {{project}}-{{item.value.ha_group}}
-      --max-restart {{provision_instances[project].ha_groups[item.value.ha_group].max_restart}}
-      --max-relocate {{provision_instances[project].ha_groups[item.value.ha_group].max_restart}}      
+      --max-restart {{provision_instances[project].ha_groups[item.value.ha_group].max_restart | default(ha_groups_template.max_restart)}}
+      --max-relocate {{provision_instances[project].ha_groups[item.value.ha_group].max_relocate | default(ha_groups_template.max_relocate)}}      
   delegate_to: localhost
   loop: "{{provision_instances[project].instances | dict2items}}"
   when: "'ha_groups' in provision_instances[project] and 'ha_group' in item.value"
