@@ -158,7 +158,11 @@ class Proxmox():
             datarow = []
             for header in headers:
                 if header in element:
-                    datarow.append(element[header])
+                    if header == "ip" and isinstance(element[header], list):
+                        # special element
+                        datarow.append(self.ips_to_display(element[header]))
+                    else:
+                        datarow.append(element[header])
                 else:
                     datarow.append('')
             new_data_row = []
@@ -861,8 +865,6 @@ class Proxmox():
                 raise proxcli_exceptions.VmWaitForStatusTimeoutException
         return
 
-
-
     def resize_vms_disk(
             self,
             size,
@@ -933,7 +935,7 @@ class Proxmox():
         if len(filter_name) > 0:
             # we work on a list of vms based on name filter
             vms = self.get_vms(
-                output_format="internal", 
+                output_format="internal",
                 filter_name=filter_name
             )
         else:
@@ -941,7 +943,6 @@ class Proxmox():
             virtual_machine = self.get_vm_by_id_or_name(vmid, vmname)
             if not virtual_machine:
                 raise proxcli_exceptions.ProxmoxVmNotFoundException
-            node = virtual_machine["node"]
             vms = [virtual_machine,]
 
         data = {}
@@ -983,25 +984,30 @@ class Proxmox():
         interfaces = None
         try:
             agent = self.proxmox_instance.nodes(proxmox_node).qemu(vmid).agent
-            interfaces = agent.get("network-get-interfaces")
+            interfaces = [i for i in agent.get(
+                "network-get-interfaces")["result"] if "ip-addresses" in i]
         except ResourceException:
             pass
 
-        vm_ip = None
-        if interfaces:
-            for interface in interfaces["result"]:
-                if interface["name"] == "lo":
-                    pass
+        ifaces = []
+        for interface in interfaces:
+            name = interface["name"]
+            for ip in interface['ip-addresses']:
+                if (
+                    ip["prefix"] == 24 and
+                    ip["ip-address-type"] == net_type
+                ):
+                    ifaces.append(
+                        {"name": name, "ip": ip["ip-address"]}
+                    )
                 else:
-                    for ipaddress in interface["ip-addresses"]:
-                        if ipaddress["ip-address-type"] != net_type:
-                            pass
-                        else:
-                            vm_ip = ipaddress["ip-address"]
-                            break
-        else:
-            vm_ip = "Agent not running"
-        return vm_ip
+                    pass
+        return ifaces
+
+    def ips_to_display(self, ips):
+        """convert a list of ip addresses to display string"""
+        ips = [f"{ip['name']}: {ip['ip']}" for ip in ips]
+        return "\n".join(ips)
 
     def get_vms(
             self,
@@ -1050,15 +1056,13 @@ class Proxmox():
                     "status" in virtual_machine and
                     virtual_machine["status"] == "running"
                 ):
-                    try:
-                        virtual_machine["ip"] = self.get_vm_public_ip(
-                            proxmox_node=virtual_machine["node"],
-                            vmid=virtual_machine["vmid"]
-                        )
-                    except KeyError:
-                        virtual_machine["ip"] = "N/A"
+                    ips = self.get_vm_public_ip(
+                        proxmox_node=virtual_machine["node"],
+                        vmid=virtual_machine["vmid"]
+                    )
+                    virtual_machine["ip"] = ips
                 else:
-                    virtual_machine["ip"] = "N/A"
+                    virtual_machine["ip"] = []
                 # if tags are empty create an empty key:value pair
                 if "tags" not in virtual_machine.keys():
                     virtual_machine["tags"] = ""
@@ -1338,7 +1342,8 @@ class Proxmox():
         save="",
         output_format="yaml",
         exclude_tag="",
-        filter_name=""
+        filter_name="",
+        iface_name="eth0"
 
     ) -> None:
         """
@@ -1367,6 +1372,15 @@ class Proxmox():
 
         for virtual_machine in vms_enhanced:
             if virtual_machine["ip"] and virtual_machine["ip"] != "N/A":
+                virtual_machine["ip"] = [
+                    i["ip"] for i in virtual_machine[
+                        "ip"
+                    ] if i["name"] == iface_name
+                ]
+                if len(virtual_machine["ip"]) > 0:
+                    virtual_machine["ip"] = virtual_machine["ip"][0]
+                else:
+                    virtual_machine["ip"] = ""
                 if "all" not in inventory:
                     inventory["all"] = {}
 

@@ -519,7 +519,8 @@ def inventory_save(
     path: Annotated[str, typer.Option()] = "",
     exclude_tag: Annotated[str, typer.Option()] = "",
     filter_name: Annotated[str, typer.Option()] = "",
-    output_format: Annotated[str, typer.Option()] = "yaml"
+    output_format: Annotated[str, typer.Option()] = "yaml",
+    iface_name: Annotated[str, typer.Option()] = "eth0"
 ):
     """save ansible inventory"""
     if output_format not in ("json", "yaml"):
@@ -529,7 +530,8 @@ def inventory_save(
         save=path,
         exclude_tag=exclude_tag,
         output_format=output_format,
-        filter_name=filter_name
+        filter_name=filter_name,
+        iface_name=iface_name
     )
 
 
@@ -537,7 +539,8 @@ def inventory_save(
 def inventory_show(
     exclude_tag: Annotated[str, typer.Option()] = "",
     filter_name: Annotated[str, typer.Option()] = "",
-    output_format: Annotated[str, typer.Option()] = "yaml"
+    output_format: Annotated[str, typer.Option()] = "yaml",
+    iface_name: Annotated[str, typer.Option()] = "eth0"
 ):
     """display computed ansible inventory"""
     if output_format not in ("json", "yaml"):
@@ -546,7 +549,8 @@ def inventory_show(
     p.inventory(
         output_format=output_format,
         exclude_tag=exclude_tag,
-        filter_name=filter_name
+        filter_name=filter_name,
+        iface_name=iface_name
     )
 
 
