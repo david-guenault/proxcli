@@ -28,6 +28,71 @@ ha_groups_template:
   max_restart: 3
   max_relocate: 3
 provision_instances:
+  movie-web-prod-01:
+    ha_groups:
+      movie-web:
+    instances:
+      movie-web:
+        desc: "movie web"
+        count: 1
+        memory: 4096
+        cores: 4
+        disk_storage: "b4papp"
+        ha_group: "movie-web"
+        tags:
+          - "prod"
+          - "movie-web"
+          - "media"
+  k3s-dev-01:
+    ha_groups:
+      master:
+      node:
+        nodes: "pve1,pve2"
+    instances:
+      master:
+        desc: "control plane"
+        count: 3
+        ha_group: "master"
+        memory: 4096
+        cores: 4
+        disk_storage: "b4pstorage"
+        tags:
+          - "dev"
+          - "kubernetes"
+          - "k3s"
+          - "lab"
+          - "master"
+          - "k3s_cluster"
+      node:
+        desc: "node"
+        count: 4
+        ha_group: "node"
+        memory: 4096
+        cores: 4
+        disk_storage: "b4papp"
+        nodes: "pve1,pve2"
+        tags:
+          - "dev"
+          - "kubernetes"
+          - "k3s"
+          - "lab"
+          - "node"
+          - "k3s_cluster"          
+  nexus-prod-01:
+    ha_groups:
+      nexus:
+    instances:
+      nexus:
+        desc: "nexus repository server"
+        count: 1
+        ha_group: "nexus"
+        memory: 8198
+        cores: 4
+        disk_size: "60G"
+        tags:
+          - "prod"
+          - "nexus"
+          - "lab"
   grafana-dev-01:
     ha_groups:
       grafana:
