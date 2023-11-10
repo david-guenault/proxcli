@@ -7,7 +7,7 @@
   delegate_to: localhost
   register: result
   loop: "{{provision_instances[project].instances | dict2items}}"
-  failed_when: result.stdout != '1'
+  failed_when: (result.stdout | trim) != '1'
 
 - name: create proxmox instances
   ansible.builtin.shell:
