@@ -3,7 +3,7 @@
 - name: check if instances are already created fail if so
   ansible.builtin.shell:
     cmd: >
-      {{setup.proxcli.path}} vms list --filter-name '^{{project}}-{{item.key}}' | wc -l
+      {{setup.proxcli.path}} vms list --filter-name '^{{project}}-{{item.key}}' --output-format json | jq '. | length'
   delegate_to: localhost
   register: result
   loop: "{{provision_instances[project].instances | dict2items}}"
