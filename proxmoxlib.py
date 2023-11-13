@@ -990,20 +990,20 @@ class Proxmox():
             pass
 
         ifaces = []
-        for interface in interfaces:
-            name = interface["name"]
-            for ip in interface['ip-addresses']:
-                if (
-                    ip["prefix"] == 24 and
-                    ip["ip-address-type"] == net_type
-                ):
-                    ifaces.append(
-                        {"name": name, "ip": ip["ip-address"]}
-                    )
-                else:
-                    pass
+        if interfaces:
+            for interface in interfaces:
+                name = interface["name"]
+                if 'ip-addresses' in interface:
+                    for ip in interface['ip-addresses']:
+                        if (
+                            ip["prefix"] == 24 and
+                            ip["ip-address-type"] == net_type
+                        ):
+                            ifaces.append(
+                                {"name": name, "ip": ip["ip-address"]}
+                            )
         return ifaces
-
+        
     def ips_to_display(self, ips):
         """convert a list of ip addresses to display string"""
         ips = [f"{ip['name']}: {ip['ip']}" for ip in ips]
