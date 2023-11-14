@@ -12,9 +12,11 @@
     cmd: > 
       {{setup.proxcli.path}} vms wait_for_status 
       --filter-name '^{{project}}-{{item.key}}'
-      --status stopped
+      --status stopped --timeout 120
   delegate_to: localhost
+  register: result
   loop: "{{provision_instances[project].instances | dict2items}}"
+  failed_when: (result.rc | int) != 0 
 
 - name: delete resources from ha groups
   ansible.builtin.shell:

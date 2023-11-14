@@ -7,7 +7,7 @@
   delegate_to: localhost
   register: result
   loop: "{{provision_instances[project].instances | dict2items}}"
-  failed_when: (result.stdout | trim) != '1'
+  failed_when: (result.rc | int) != 0 or (result.stdout | trim | int) > 0
 
 - name: create proxmox instances
   ansible.builtin.shell:
@@ -27,7 +27,7 @@
   loop: "{{provision_instances[project].instances | dict2items}}"
 
 - name: wait a few seconds 
-  ansible.builtin.shell: sleep 5
+  ansible.builtin.shell: sleep 20
   delegate_to: localhost
 
 - name: configure proxmox instances
@@ -50,6 +50,7 @@
       {{setup.proxcli.path}} vms resize
       --filter-name '^{{project}}-{{item.key}}'
       --size '{{item.value.disk_size | default(provision_template.disk_size)}}'
+      --disk '{{item.value.disk_device | default(provision_template.disk_device)}}'
   delegate_to: localhost
   loop: "{{provision_instances[project].instances | dict2items}}"
 
