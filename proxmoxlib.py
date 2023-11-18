@@ -988,7 +988,6 @@ class Proxmox():
                 "network-get-interfaces")["result"] if "ip-addresses" in i]
         except ResourceException:
             pass
-
         ifaces = []
         if interfaces:
             for interface in interfaces:
@@ -996,7 +995,6 @@ class Proxmox():
                 if 'ip-addresses' in interface:
                     for ip in interface['ip-addresses']:
                         if (
-                            ip["prefix"] == 24 and
                             ip["ip-address-type"] == net_type
                         ):
                             ifaces.append(
