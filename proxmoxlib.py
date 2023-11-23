@@ -855,7 +855,7 @@ class Proxmox():
         while not status_ready:
             vms = get_vms(vmid=vmid, name=name, filter_name=filter_name)
             if len(vms) == 0:
-                raise proxcli_exceptions.ProxmoxVmNotFoundException
+                return
             vms_status = [v["status"] for v in vms if status == v["status"]]
             if len(vms_status) == len(vms):
                 status_ready = True
