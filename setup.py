@@ -9,7 +9,7 @@ setup(
     maintainer='David GUENAULT',
     license='Apache License Version 2.0',
     python_requires=">=3.6",
-    py_modules=['proxcli', 'proxmoxlib', 'proxcli_exceptions'],
+    py_modules=['proxcli', 'proxmoxlib', 'proxcli_exceptions', 'stack_config'],
     install_requires=[
         'beautifultable==1.1.0',
         # 'click==8.1.6',

@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 """Proxcli is a remote proxmox cluster management tool"""
 import sys
+import json
 import typer
 from typing_extensions import Annotated
 from proxmoxlib import Proxmox
+from stack_config import StackConfig
 import proxcli_exceptions
 
 app = typer.Typer(no_args_is_help=True)
+stack = typer.Typer(no_args_is_help=True)
 vms = typer.Typer(no_args_is_help=True)
 nodes = typer.Typer(no_args_is_help=True)
 storages = typer.Typer(no_args_is_help=True)
@@ -26,6 +29,7 @@ inventory = typer.Typer(no_args_is_help=True)
 tags = typer.Typer(no_args_is_help=True)
 
 app.add_typer(vms, name="vms")
+app.add_typer(stack, name="stack")
 app.add_typer(nodes, name="nodes", help="Nodes related functions")
 app.add_typer(
     inventory, name="inventory",
@@ -49,8 +53,63 @@ cluster.add_typer(ha, name="ha", help="high availibility commands")
 
 p = Proxmox()
 
+# STACK
+
+
+@stack.command("create")
+def stack_create(
+    config: Annotated[str, typer.Option()],
+    default: Annotated[str, typer.Option()],
+    stack: Annotated[str, typer.Option()]
+):
+    """ Create a proxmox stack with instances and ha groups """
+    sc = StackConfig(config_file=config, default_file=default)
+    config = sc.load_config()["provision_instances"][stack]
+    sc.get_stack_data(stack)
+
+    # print(json.dumps(config, indent=2))
+
+@stack.command("delete")
+def stack_delete(
+    config: Annotated[str, typer.Option()],
+    default: Annotated[str, typer.Option()],
+    stack: Annotated[str, typer.Option()]
+):
+    """ delete a stack """
+    p = Proxmox()
+    sc = StackConfig(config_file=config, default_file=default)
+    config = sc.load_config()["provision_instances"]
+    """ first we stop instances """
+    for instance, config in config[stack]["instances"].items():
+        pattern = f'^{stack}-{instance}'
+        vms = p.get_vms(output_format="internal", filter_name=pattern, status="running")
+        for vm in vms:
+            print(f"Stopping vm {vm['name']} {vm['vmid']}")
+            vms_stop(vmid=vm["vmid"])
+            # p.set_vms_status(status="stopped", vmid=vm["vmid"])
+            p.vms_wait_for_status(status="stopped", vmid=vm["vmid"])
+    #     vms_stop(filter_name=)
+    #     p.set_vms_status(
+    #         status="stopped",
+    #         filter_name=f"^{stack}-{instance}"
+    #     )
+    """ then we remove each esources from the ha groups """
+
+    """ then remove ha groups """
+    
+
+@stack.command("dump-config")
+def stack_dump_config(
+    config: Annotated[str, typer.Option()],
+    default: Annotated[str, typer.Option()]
+):
+    """ Create a proxmox stack with instances and ha groups """
+    sc = StackConfig(config_file=config, default_file=default)
+    config = sc.load_config()
+    print(json.dumps(config, indent=2))
 
 # CONFIG #
+
 
 @config.command("show")
 def config_show():

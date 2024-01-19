@@ -1251,8 +1251,7 @@ class Proxmox():
         dst_node = target
 
         vmids = []
-
-        if not duplicate:
+        if not duplicate or duplicate < 2:
             node = self.proxmox_instance.nodes(src_node)
             next_vmid = self.get_next_id()
             result = node.qemu(vmid).clone.post(
