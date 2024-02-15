@@ -1,0 +1,54 @@
+# ha_resources:
+#   added:
+#     - ha resource 1
+#     - ha resource 2
+#   removed:
+#     - ha resource 3
+#     - ha resource 4
+#   updated:
+#     ha_resource_5:
+#       property1:
+#         old: oldvalue
+#         new: newvalue
+ha_groups:
+  added:
+    - hag_name1
+    - hag_name2
+    - hag_name3
+  updated:
+    hag_name6:
+      # exeception for "max_restart", "max_relocate"
+      # those are not ha group properties but 
+      # ha resources properties
+      property1: 
+        old: oldvalue
+        new: newvalue
+      property2:
+        old: oldvalue
+        new: newvalue
+  removed:
+    - hag_name4
+    - hag_name5
+instances:
+  added:
+    - instance1
+    - instance2
+  updated:
+    instance6:
+      tags:
+        added:
+          - tag1
+        removed:
+          - tag2
+      property1:
+        old: oldvvalue
+        new: newvalue
+      property2:
+        old: oldvvalue
+        new: newvalue
+  removed:
+    - instance3
+    - instance4
+
+
+  
