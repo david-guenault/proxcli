@@ -9,6 +9,7 @@ from urllib import parse as urllib_parse
 import json
 import re
 import os
+from dataclasses import dataclass
 import configparser
 import shutil
 import yaml
@@ -25,6 +26,48 @@ import proxcli_exceptions
 urllib3.disable_warnings()
 
 
+@dataclass
+class VmProperties:
+    """Description of the class.
+
+    Args:
+        <arg> (<type>): Description of the arg.
+
+    Variables:
+        <variable> (<type>): Description of the variable.
+    """
+    vmid: int
+    vmname: str = None
+    cores: int = None
+    memory: str = None
+    ipconfig: str = None
+    cipassword: str = None
+    disk_size: str = None
+    ciuser: str = None
+    sshkey: str = None
+    tags: str = None
+
+
+@dataclass
+class HaResource:
+    """Description of the class.
+
+    Args:
+        <arg> (<type>): Description of the arg.
+
+    Variables:
+        <variable> (<type>): Description of the variable.
+    """
+    sid: str
+    comment: str
+    delete: str
+    digest: str
+    group: str
+    max_relocate: int
+    max_restart: int
+    state: str
+
+
 class Proxmox():
     """proxmox api helper"""
     def __init__(self) -> None:
@@ -33,7 +76,39 @@ class Proxmox():
         if result:
             self.proxmox_instance = self.proxmox()
 
+
     # UTILITY #
+
+    def bytesto(self, bytes, to, bsize=1024):
+        """convert bytes to megabytes, etc.
+        sample code:
+            print('mb= ' + str(bytesto(314575262000000, 'm')))
+        sample output: 
+            mb= 300002347.946
+        """
+
+        a = {'K': 1, 'M': 2, 'G': 3, 'T': 4, 'P': 5, 'E': 6}
+        r = float(bytes)
+        for i in range(a[to]):
+            r = r / bsize
+
+        return r
+
+    def tobytes(self, size):
+        """Description of the function/method.
+
+        Parameters:
+            <param>: Description of the parameter
+
+        Returns:
+            <variable>: Description of the return value
+        """
+        size_name = ("B", "K", "M", "G", "T", "P", "E")
+        unit = size[-1]
+        size = int(size[:-1])
+        idx = size_name.index(unit)
+        factor = 1024 ** idx
+        return size * factor
 
     def get_terminal_width(self) -> int:
         """shortcut to shutil.get_terminal_size()[0]"""
@@ -432,14 +507,30 @@ class Proxmox():
             output_format=output_format
         )
 
-    def get_ha_groups(self, output_format="internal") -> Any:
+    def get_ha_groups(
+            self,
+            output_format="internal",
+            filter_group="^.*"
+    ) -> Any:
         """list cluster ha groups"""
         hagroups = self.proxmox_instance.cluster.ha.groups.get()
+        hagroups = [
+            hag for hag in hagroups if re.match(
+                pattern=filter_group,
+                string=hag["group"]
+            )
+        ]
         return self.output(
             headers=self.headers_ha_groups,
             data=hagroups,
             output_format=output_format
         )
+
+    def exists_ha_group(self, ha_group):
+        """check if ha group exist"""
+        ha_groups = self.get_ha_groups(output_format="internal")
+        ha_groups = [h for h in ha_groups if h["group"] == ha_group]
+        return True if len(ha_groups) > 0 else False
 
     def create_ha_group(
             self,
@@ -469,6 +560,28 @@ class Proxmox():
             "restricted": restricted
         })
 
+    def update_ha_group(
+        self,
+        group,
+        proxmox_nodes=None,
+        nofailback=None,
+        restricted=None                    
+    ) -> None:
+        """ Update an existing ha group """
+        if nofailback is not None:
+            nofailback = 0 if nofailback is False else 1
+        if restricted is not None:
+            restricted = 0 if restricted is False else 1
+        
+        desired = {
+            "nodes": proxmox_nodes,
+            "nofailback": nofailback,
+            "restricted": restricted
+        }
+        desired = {k: v for k, v in desired.items() if v is not None}
+
+        self.proxmox_instance.cluster.ha.groups(group).put(**desired)
+
     def delete_ha_group(self, group) -> None:
         """delete cluster ha group
 
@@ -480,7 +593,8 @@ class Proxmox():
     def get_ha_resources(
             self,
             output_format="table",
-            filter_name="^.*$"
+            filter_name="^.*$",
+            group=None
     ) -> Any:
         """retrieve a list of cluster ha resources with named cluster ha groups
 
@@ -490,17 +604,42 @@ class Proxmox():
         resources = self.proxmox_instance.cluster.ha.resources.get()
         if not resources:
             resources = []
+        vms = self.get_vms(output_format="internal", filter_name=filter_name)
         for resource in resources:
             vmid = resource["sid"].split(":")[-1]
-            virtual_machine = self.get_vm_by_id_or_name(vmid=vmid)
-            resource["name"] = virtual_machine["name"]
-            resource["vmid"] = vmid
+            virtual_machine = [v for v in vms if int(v["vmid"]) == int(vmid)]
+            if len(virtual_machine) > 0:
+                virtual_machine = virtual_machine[0]
+                resource["name"] = virtual_machine["name"]
+                resource["vmid"] = vmid
+            else:
+                resource["name"] = ""
+                resource["vmid"] = vmid
         resources = [r for r in resources if re.match(filter_name, r["name"])]
+        if group:
+            resources = [r for r in resources if r["group"] == group]
         return self.output(
             headers=self.headers_ha_resources,
             data=resources,
             output_format=output_format
         )
+
+    def update_ha_resource(
+        self,
+        ha_resource: HaResource
+    ) -> None:
+        """ Update an existing ha group """
+
+        desired = {
+            "max_restart": ha_resource.max_restart,
+            "max_relocate": ha_resource.max_relocate
+        }
+        desired = {k: v for k, v in desired.items() if v is not None}
+
+        self.proxmox_instance.cluster.ha.resources(
+            ha_resource.sid
+        ).put(**desired)
+
 
     def create_ha_resource(
             self,
@@ -553,7 +692,6 @@ class Proxmox():
                 output_format="internal",
                 filter_name=filter_name
             )
-            print(vms)
             for vm in vms:
                 print(
                     f"Adding resource {vmid} with name "
@@ -575,7 +713,33 @@ class Proxmox():
         resources = [str(r["vmid"]) for r in resources]
         return True if str(vmid) in resources else False
 
-    def delete_ha_resources(self, filter_name=None, vmid=None) -> None:
+    def delete_ha_resources_by_group_name(
+        self,
+        group
+    ) -> None:
+        """Description of the function/method.
+
+        Parameters:
+            <param>: Description of the parameter
+
+        Returns:
+            <variable>: Description of the return value
+        """
+        resources = self.get_ha_resources(
+            output_format="internal",
+            filter_name="^.*"
+        )
+        resources = [r for r in resources if r["group"] == group]
+        for resource in resources:
+            print(f"Removing resource {(resource['vmid'],)}")
+            ha_endpoint = self.proxmox_instance.cluster.ha
+            ha_endpoint.resources.delete(resource["vmid"])
+
+    def delete_ha_resources(
+            self,
+            filter_name=None,
+            vmid=None
+    ) -> None:
         """delete resource from ha group"""
         if filter_name:
             resources = self.get_ha_resources(
@@ -587,10 +751,11 @@ class Proxmox():
                     print(f"Removing resource {(resource['vmid'],)}")
                     ha_endpoint = self.proxmox_instance.cluster.ha
                     ha_endpoint.resources.delete(resource["vmid"])
-
+            return
         if vmid > 0:
             print(f"Removing resource {(vmid,)}")
             self.proxmox_instance.cluster.ha.resources.delete(vmid)
+            return
 
     def migrate_ha_resources(
             self,
@@ -642,7 +807,7 @@ class Proxmox():
                     current_try += 1
 
     def get_resource_by_id_or_name(self, vmid=None, resource_name=None) -> Any:
-        """get reosurce by its id or name"""
+        """get resource by its id or name"""
         resources = self.get_ha_resources(output_format="internal")
         resources = [] if not resources else resources
         if vmid:
@@ -806,6 +971,17 @@ class Proxmox():
         )
 
     # VMS #
+
+    def exists_vm(self, virtual_machine_id=None, virtual_machine_name=None) -> bool:
+        """ check if a vm exists by name or vmid """
+        vms = self.get_vms(output_format="internal")
+        vms = [] if not vms else vms
+        if virtual_machine_id:
+            vms = [v for v in vms if int(v["vmid"]) == int(virtual_machine_id)]
+        else:
+            vms = [v for v in vms if v["name"] == virtual_machine_name]
+
+        return True if len(vms) > 0 else False
 
     def get_vm_by_id_or_name(self, vmid=None, vmname=None) -> Any:
         """get vm by its id or name"""
@@ -1142,7 +1318,6 @@ class Proxmox():
                 tags = list(set(tags))
                 # merge in a coma separated list
                 tags = ",".join(tags)
-            print(virtual_machine["vmid"], tags)
             node = self.proxmox_instance.nodes(virtual_machine["node"])
             node.qemu(virtual_machine["vmid"]).config.put(**{'tags': tags})
 
@@ -1228,7 +1403,7 @@ class Proxmox():
             duplicate=None,
             strategy="spread",
             proxmox_nodes=""
-    ) -> None:
+    ) -> Any:
         """Clone a vm."""
         vms = self.get_vms(output_format="internal")
         virtual_machine = [v for v in vms if vmid == v["vmid"]]
@@ -1304,7 +1479,6 @@ class Proxmox():
                     ids = [v["vmid"] for v in vms]
                     if len(vm) == 0:
                         print(f"vm {vmid} not found")
-                        print(ids)
                     else:
                         vm = vm[0]
                         if vm["node"] == node:

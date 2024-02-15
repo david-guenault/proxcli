@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """Proxcli is a remote proxmox cluster management tool"""
 import sys
-import json
 import typer
 from typing_extensions import Annotated
 from proxmoxlib import Proxmox
-from stack_config import StackConfig
+from stack_operations import StackOperations
 import proxcli_exceptions
 
 app = typer.Typer(no_args_is_help=True)
@@ -56,57 +55,60 @@ p = Proxmox()
 # STACK
 
 
-@stack.command("create")
-def stack_create(
-    config: Annotated[str, typer.Option()],
-    default: Annotated[str, typer.Option()],
-    stack: Annotated[str, typer.Option()]
+@stack.command("plan")
+def stack_plan(
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
 ):
-    """ Create a proxmox stack with instances and ha groups """
-    sc = StackConfig(config_file=config, default_file=default)
-    config = sc.load_config()["provision_instances"][stack]
-    sc.get_stack_data(stack)
+    """Description of the function/method.
 
-    # print(json.dumps(config, indent=2))
+    Parameters:
+        <param>: Description of the parameter
+
+    Returns:
+        <variable>: Description of the return value
+    """
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_plan(stack_name=stack_name)
+
+
+@stack.command("apply")
+def stack_apply(
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
+):
+    """Description of the function/method.
+
+    Parameters:
+        <param>: Description of the parameter
+
+    Returns:
+        <variable>: Description of the return value
+    """
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_apply(stack_name=stack_name)
+
 
 @stack.command("delete")
 def stack_delete(
-    config: Annotated[str, typer.Option()],
-    default: Annotated[str, typer.Option()],
-    stack: Annotated[str, typer.Option()]
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
 ):
     """ delete a stack """
-    p = Proxmox()
-    sc = StackConfig(config_file=config, default_file=default)
-    config = sc.load_config()["provision_instances"]
-    """ first we stop instances """
-    for instance, config in config[stack]["instances"].items():
-        pattern = f'^{stack}-{instance}'
-        vms = p.get_vms(output_format="internal", filter_name=pattern, status="running")
-        for vm in vms:
-            print(f"Stopping vm {vm['name']} {vm['vmid']}")
-            vms_stop(vmid=vm["vmid"])
-            # p.set_vms_status(status="stopped", vmid=vm["vmid"])
-            p.vms_wait_for_status(status="stopped", vmid=vm["vmid"])
-    #     vms_stop(filter_name=)
-    #     p.set_vms_status(
-    #         status="stopped",
-    #         filter_name=f"^{stack}-{instance}"
-    #     )
-    """ then we remove each esources from the ha groups """
-
-    """ then remove ha groups """
-    
-
-@stack.command("dump-config")
-def stack_dump_config(
-    config: Annotated[str, typer.Option()],
-    default: Annotated[str, typer.Option()]
-):
-    """ Create a proxmox stack with instances and ha groups """
-    sc = StackConfig(config_file=config, default_file=default)
-    config = sc.load_config()
-    print(json.dumps(config, indent=2))
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_delete(stack=stack_name)
 
 # CONFIG #
 
@@ -176,9 +178,15 @@ def storage_list():
 
 
 @ha_groups.command("list")
-def ha_groups_list():
+def ha_groups_list(
+    filter_group: Annotated[str, typer.Option()] = "^.*",
+    output_format: Annotated[str, typer.Option()] = "table"
+):
     """list cluster ha groups"""
-    p.get_ha_groups(output_format="table")
+    p.get_ha_groups(
+        output_format="table",
+        filter_group=filter_group
+    )
 
 
 @ha_groups.command("create")
@@ -190,6 +198,21 @@ def ha_groups_create(
 ):
     """create a cluster ha group"""
     p.create_ha_group(
+        group=group,
+        proxmox_nodes=proxmox_nodes,
+        restricted=restricted,
+        nofailback=nofailback
+    )
+
+@ha_groups.command("update")
+def ha_groups_update(
+        group: Annotated[str, typer.Option()],
+        proxmox_nodes: Annotated[str, typer.Option()] = None,
+        restricted: Annotated[bool, typer.Option()] = None,
+        nofailback: Annotated[bool, typer.Option()] = None
+):
+    """update a cluster ha group"""
+    p.update_ha_group(
         group=group,
         proxmox_nodes=proxmox_nodes,
         restricted=restricted,
