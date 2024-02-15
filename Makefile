@@ -1,10 +1,10 @@
 all: clean venv setup
 
 setup:
-	venv/bin/python3 setup.py install
+	venv/bin/python3.11 setup.py install
 
 venv:
-	python3 -m venv venv
+	python3.11 -m venv venv
 	./venv/bin/pip install --upgrade pip wheel
 
 clean:

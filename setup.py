@@ -8,12 +8,16 @@ setup(
     maintainer_email='david.guenault@gmail.com',
     maintainer='David GUENAULT',
     license='Apache License Version 2.0',
-    python_requires=">=3.6",
-    py_modules=['proxcli', 'proxmoxlib', 'proxcli_exceptions'],
+    python_requires=">=3.11",
+    py_modules=[
+        'proxcli',
+        'proxmoxlib',
+        'proxcli_exceptions',
+        'stack_config',
+        'stack_operations'
+    ],
     install_requires=[
         'beautifultable==1.1.0',
-        # 'click==8.1.6',
-        # 'colored==2.2.3',
         'proxcli==1.0',
         'proxmoxer==2.0.1',
         'requests==2.31.0',

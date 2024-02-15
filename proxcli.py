@@ -4,9 +4,11 @@ import sys
 import typer
 from typing_extensions import Annotated
 from proxmoxlib import Proxmox
+from stack_operations import StackOperations
 import proxcli_exceptions
 
 app = typer.Typer(no_args_is_help=True)
+stack = typer.Typer(no_args_is_help=True)
 vms = typer.Typer(no_args_is_help=True)
 nodes = typer.Typer(no_args_is_help=True)
 storages = typer.Typer(no_args_is_help=True)
@@ -26,6 +28,7 @@ inventory = typer.Typer(no_args_is_help=True)
 tags = typer.Typer(no_args_is_help=True)
 
 app.add_typer(vms, name="vms")
+app.add_typer(stack, name="stack")
 app.add_typer(nodes, name="nodes", help="Nodes related functions")
 app.add_typer(
     inventory, name="inventory",
@@ -49,8 +52,66 @@ cluster.add_typer(ha, name="ha", help="high availibility commands")
 
 p = Proxmox()
 
+# STACK
+
+
+@stack.command("plan")
+def stack_plan(
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
+):
+    """Description of the function/method.
+
+    Parameters:
+        <param>: Description of the parameter
+
+    Returns:
+        <variable>: Description of the return value
+    """
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_plan(stack_name=stack_name)
+
+
+@stack.command("apply")
+def stack_apply(
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
+):
+    """Description of the function/method.
+
+    Parameters:
+        <param>: Description of the parameter
+
+    Returns:
+        <variable>: Description of the return value
+    """
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_apply(stack_name=stack_name)
+
+
+@stack.command("delete")
+def stack_delete(
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
+):
+    """ delete a stack """
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_delete(stack=stack_name)
 
 # CONFIG #
+
 
 @config.command("show")
 def config_show():
@@ -117,9 +178,15 @@ def storage_list():
 
 
 @ha_groups.command("list")
-def ha_groups_list():
+def ha_groups_list(
+    filter_group: Annotated[str, typer.Option()] = "^.*",
+    output_format: Annotated[str, typer.Option()] = "table"
+):
     """list cluster ha groups"""
-    p.get_ha_groups(output_format="table")
+    p.get_ha_groups(
+        output_format="table",
+        filter_group=filter_group
+    )
 
 
 @ha_groups.command("create")
@@ -131,6 +198,21 @@ def ha_groups_create(
 ):
     """create a cluster ha group"""
     p.create_ha_group(
+        group=group,
+        proxmox_nodes=proxmox_nodes,
+        restricted=restricted,
+        nofailback=nofailback
+    )
+
+@ha_groups.command("update")
+def ha_groups_update(
+        group: Annotated[str, typer.Option()],
+        proxmox_nodes: Annotated[str, typer.Option()] = None,
+        restricted: Annotated[bool, typer.Option()] = None,
+        nofailback: Annotated[bool, typer.Option()] = None
+):
+    """update a cluster ha group"""
+    p.update_ha_group(
         group=group,
         proxmox_nodes=proxmox_nodes,
         restricted=restricted,
