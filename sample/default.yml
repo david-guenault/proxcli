@@ -1,0 +1,32 @@
+setup:
+  proxcli:
+    path: /home/david/Documents/proxcli/venv/bin/proxcli
+      - 
+provision_template:
+  delay_disk_resize: 10
+  count: 2
+  disk_size: "30G"
+  disk_storage: "b4papp"
+  memory: 2048
+  cores: 2
+  clone: 100
+  block: true
+  target: "pve1"
+  full_clone: true
+  user: "system"
+  password: "system"
+  sshkey: "~/.ssh/id_rsa.pub"
+  ipconfig: "ip=dhcp"
+  tags:
+    - "qemu"
+    - "lab"
+  disk_device: "virtio0"
+  strategy: "spread"
+  nodes: pve1,pve2,pve3
+  ipsequence: False
+ha_groups_template:
+  nodes: pve1,pve2
+  restricted: false
+  nofailback: true
+  max_restart: 3
+  max_relocate: 3
