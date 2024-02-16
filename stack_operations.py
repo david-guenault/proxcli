@@ -38,6 +38,26 @@ class StackOperations():
             default_file=default_file_path
         ).load_config()
 
+    def stack_dump_state(self, stack_name):
+        """Description of the function/method.
+
+        Parameters:
+            <param>: Description of the parameter
+
+        Returns:
+            <variable>: Description of the return value
+        """
+        config = self.load_stack_data(
+            stack_name=stack_name,
+            file_type="state"
+        )
+        print(
+            json.dumps(
+                config,
+                indent=2
+            )
+        )
+
     def stack_diff(self, state, desired):
         """Description of the function/method.
 
