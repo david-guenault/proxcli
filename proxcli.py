@@ -54,6 +54,26 @@ p = Proxmox()
 
 # STACK
 
+@stack.command("dump_state")
+def stack_dump_state(
+    config_path: Annotated[str, typer.Option()],
+    default_path: Annotated[str, typer.Option()],
+    stack_name: Annotated[str, typer.Option()]
+):
+    """Description of the function/method.
+
+    Parameters:
+        <param>: Description of the parameter
+
+    Returns:
+        <variable>: Description of the return value
+    """
+    so = StackOperations(
+        config_file_path=config_path,
+        default_file_path=default_path
+    )
+    so.stack_dump_state(stack_name=stack_name)
+
 
 @stack.command("plan")
 def stack_plan(
